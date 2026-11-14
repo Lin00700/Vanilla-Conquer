@@ -171,12 +171,30 @@ char const* RawFileClass::Set_Name(char const* filename)
     ** if Resolve_File finds an actual file on-disk we use the real name
     ** instead.
     */
+#ifdef IOS_BUILD
+    /*
+    ** iOS volumes are case-sensitive, and the container path contains an
+    ** uppercase UUID. Folding the whole path to lowercase, then failing to
+    ** fold it back, makes MAIN.MIX and REDALERT.MIX look missing even when
+    ** they are sitting in Documents under the names the disc shipped with.
+    ** Try the caller's case first. Only the final component is folded, and
+    ** only when that path does not already exist.
+    */
+    Resolve_File(Filename);
+    struct stat ios_st;
+    if (stat(Filename, &ios_st) != 0) {
+        char* slash = strrchr(Filename, '/');
+        _strlwr(slash != nullptr ? slash + 1 : Filename);
+        Resolve_File(Filename);
+    }
+#else
     _strlwr(Filename);
 
     /*
     ** Try to locate an existing file ignoring case, updates Filename
     */
     Resolve_File(Filename);
+#endif
 
     return (Filename);
 }
@@ -271,7 +289,19 @@ int RawFileClass::Open(int rights)
             break;
 
         case READ | WRITE:
+#ifdef IOS_BUILD
+            /*
+            ** "rwb" is not a POSIX open mode. Apple's fopen rejects it, so the
+            ** first attempt to write REDALERT.INI failed and the CD check
+            ** turned that into "CD not found".
+            */
+            Handle = raw_fopen(Filename, "r+b");
+            if (Handle == nullptr) {
+                Handle = raw_fopen(Filename, "w+b");
+            }
+#else
             Handle = raw_fopen(Filename, "rwb");
+#endif
             break;
         }
 

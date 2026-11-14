@@ -20,6 +20,9 @@
 #include "settings.h"
 #include <cmath>
 #include <SDL.h>
+#ifdef IOS_BUILD
+#include "video.h"
+#endif
 
 void Focus_Loss();
 void Focus_Restore();
@@ -53,7 +56,22 @@ void WWKeyboardClassSDL2::Fill_Buffer_From_System(void)
             }
             break;
         case SDL_MOUSEMOTION:
+#ifdef IOS_BUILD
+        {
+            int game_x = 0;
+            int game_y = 0;
+            Video_Window_Point_To_Game((float)event.motion.x, (float)event.motion.y, game_x, game_y);
+        }
+#else
             Move_Video_Mouse(static_cast<float>(event.motion.xrel), static_cast<float>(event.motion.yrel));
+#endif
+        break;
+        case SDL_FINGERDOWN:
+        case SDL_FINGERUP:
+        case SDL_FINGERMOTION:
+#ifdef IOS_BUILD
+            Handle_Touch_Event(event);
+#endif
             break;
         case SDL_MOUSEBUTTONDOWN:
         case SDL_MOUSEBUTTONUP: {
@@ -72,6 +90,9 @@ void WWKeyboardClassSDL2::Fill_Buffer_From_System(void)
                 break;
             }
 
+#ifdef IOS_BUILD
+            Video_Window_Point_To_Game((float)event.button.x, (float)event.button.y, x, y);
+#else
             if (Settings.Mouse.RawInput || Is_Gamepad_Active()) {
                 Get_Video_Mouse(x, y);
             } else {
@@ -80,6 +101,7 @@ void WWKeyboardClassSDL2::Fill_Buffer_From_System(void)
                 x = event.button.x / scale_x;
                 y = event.button.y / scale_y;
             }
+#endif
 
             Put_Mouse_Message(key, x, y, event.type == SDL_MOUSEBUTTONDOWN ? false : true);
         } break;
@@ -127,10 +149,246 @@ void WWKeyboardClassSDL2::Fill_Buffer_From_System(void)
             break;
         }
     }
+#ifdef IOS_BUILD
+    Update_Touch_Gesture();
+#endif
     if (Is_Gamepad_Active()) {
         Process_Controller_Axis_Motion();
     }
 }
+
+#ifdef IOS_BUILD
+namespace
+{
+    struct TouchPoint
+    {
+        SDL_FingerID id = 0;
+        float x = 0.0f;
+        float y = 0.0f;
+        float origin_x = 0.0f;
+        float origin_y = 0.0f;
+        Uint32 down_ms = 0;
+        bool down = false;
+    };
+
+    TouchPoint g_touches[2];
+    int g_touch_count = 0;
+    bool g_box_select = false;
+    bool g_long_press_sent = false;
+    bool g_pan_sent = false;
+    bool g_two_finger = false;
+    float g_pan_x = 0.0f;
+    float g_pan_y = 0.0f;
+    Uint32 g_pan_ms = 0;
+
+    constexpr Uint32 kLongPressMs = 450;
+    constexpr Uint32 kPanIdleMs = 90;
+    constexpr float kMoveSlop = 0.012f;
+
+    int Touch_Index(SDL_FingerID id)
+    {
+        for (int i = 0; i < 2; ++i) {
+            if (g_touches[i].down && g_touches[i].id == id) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    int Touch_Free()
+    {
+        for (int i = 0; i < 2; ++i) {
+            if (!g_touches[i].down) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    float Touch_Distance(const TouchPoint& touch)
+    {
+        const float dx = touch.x - touch.origin_x;
+        const float dy = touch.y - touch.origin_y;
+        return std::sqrt(dx * dx + dy * dy);
+    }
+
+    void Touch_Centroid(float& x, float& y)
+    {
+        x = 0.0f;
+        y = 0.0f;
+        int count = 0;
+        for (int i = 0; i < 2; ++i) {
+            if (!g_touches[i].down) {
+                continue;
+            }
+            x += g_touches[i].x;
+            y += g_touches[i].y;
+            ++count;
+        }
+        if (count > 0) {
+            x /= (float)count;
+            y /= (float)count;
+        }
+    }
+} // namespace
+
+void WWKeyboardClassSDL2::Handle_Touch_Event(const SDL_Event& event)
+{
+    const SDL_FingerID id = event.tfinger.fingerId;
+    int index = Touch_Index(id);
+    if (event.type == SDL_FINGERDOWN) {
+        if (index < 0) {
+            index = Touch_Free();
+        }
+        if (index < 0) {
+            return;
+        }
+        TouchPoint& touch = g_touches[index];
+        touch.id = id;
+        touch.x = event.tfinger.x;
+        touch.y = event.tfinger.y;
+        touch.origin_x = touch.x;
+        touch.origin_y = touch.y;
+        touch.down_ms = event.tfinger.timestamp != 0 ? event.tfinger.timestamp : SDL_GetTicks();
+        touch.down = true;
+        g_touch_count = 0;
+        for (int i = 0; i < 2; ++i) {
+            g_touch_count += g_touches[i].down ? 1 : 0;
+        }
+        if (g_touch_count == 1) {
+            int game_x = 0;
+            int game_y = 0;
+            Video_Norm_To_Game(touch.x, touch.y, game_x, game_y);
+            g_box_select = false;
+            g_long_press_sent = false;
+            g_pan_sent = false;
+            g_two_finger = false;
+        } else {
+            g_two_finger = true;
+            g_pan_sent = false;
+            Touch_Centroid(g_pan_x, g_pan_y);
+            g_pan_ms = SDL_GetTicks();
+            if (g_box_select) {
+                int game_x = 0;
+                int game_y = 0;
+                Get_Video_Mouse(game_x, game_y);
+                Put_Mouse_Message(VK_LBUTTON, game_x, game_y, true);
+                g_box_select = false;
+            }
+        }
+        return;
+    }
+
+    if (index < 0) {
+        return;
+    }
+    TouchPoint& touch = g_touches[index];
+    touch.x = event.tfinger.x;
+    touch.y = event.tfinger.y;
+
+    if (event.type == SDL_FINGERUP) {
+        const bool was_only = g_touch_count == 1;
+        const float distance = Touch_Distance(touch);
+        touch.down = false;
+        g_touch_count = 0;
+        for (int i = 0; i < 2; ++i) {
+            g_touch_count += g_touches[i].down ? 1 : 0;
+        }
+        AnalogScrollActive = false;
+        if (!was_only) {
+            return;
+        }
+        int game_x = 0;
+        int game_y = 0;
+        Video_Norm_To_Game(touch.x, touch.y, game_x, game_y);
+        if (g_box_select) {
+            Put_Mouse_Message(VK_LBUTTON, game_x, game_y, true);
+            g_box_select = false;
+        } else if (!g_long_press_sent && !g_pan_sent && distance <= kMoveSlop) {
+            // One finger taps selects. Two fingers tapping (no pan) is the command click.
+            const unsigned short button = g_two_finger ? VK_RBUTTON : VK_LBUTTON;
+            Put_Mouse_Message(button, game_x, game_y, false);
+            Put_Mouse_Message(button, game_x, game_y, true);
+        }
+        g_long_press_sent = false;
+        g_pan_sent = false;
+        g_two_finger = false;
+    }
+}
+
+void WWKeyboardClassSDL2::Update_Touch_Gesture()
+{
+    int down = 0;
+    for (int i = 0; i < 2; ++i) {
+        down += g_touches[i].down ? 1 : 0;
+    }
+    g_touch_count = down;
+    if (down >= 2) {
+        float x = 0.0f;
+        float y = 0.0f;
+        Touch_Centroid(x, y);
+        const float dx = x - g_pan_x;
+        const float dy = y - g_pan_y;
+        g_pan_x = x;
+        g_pan_y = y;
+        if (std::fabs(dx) > 0.012f || std::fabs(dy) > 0.012f) {
+            g_pan_sent = true;
+            g_pan_ms = SDL_GetTicks();
+            // Drag the map: fingers move one way, the camera scrolls the other.
+            ScrollDirType direction_x = SDIR_NONE;
+            ScrollDirType direction_y = SDIR_NONE;
+            if (std::fabs(dx) > 0.003f) {
+                direction_x = dx > 0.0f ? SDIR_W : SDIR_E;
+            }
+            if (std::fabs(dy) > 0.003f) {
+                direction_y = dy > 0.0f ? SDIR_N : SDIR_S;
+            }
+            if (direction_x == SDIR_E && direction_y == SDIR_N) {
+                ScrollDirection = SDIR_NE;
+            } else if (direction_x == SDIR_E && direction_y == SDIR_S) {
+                ScrollDirection = SDIR_SE;
+            } else if (direction_x == SDIR_W && direction_y == SDIR_N) {
+                ScrollDirection = SDIR_NW;
+            } else if (direction_x == SDIR_W && direction_y == SDIR_S) {
+                ScrollDirection = SDIR_SW;
+            } else if (direction_x != SDIR_NONE) {
+                ScrollDirection = direction_x;
+            } else if (direction_y != SDIR_NONE) {
+                ScrollDirection = direction_y;
+            }
+            AnalogScrollActive = ScrollDirection != SDIR_NONE;
+        } else if (SDL_GetTicks() - g_pan_ms > kPanIdleMs) {
+            AnalogScrollActive = false;
+        }
+        return;
+    }
+
+    if (down == 1) {
+        AnalogScrollActive = false;
+        TouchPoint* touch = g_touches[0].down ? &g_touches[0] : &g_touches[1];
+        int game_x = 0;
+        int game_y = 0;
+        Video_Norm_To_Game(touch->x, touch->y, game_x, game_y);
+        const float distance = Touch_Distance(*touch);
+        if (!g_box_select && !g_long_press_sent && distance > kMoveSlop) {
+            int origin_x = 0;
+            int origin_y = 0;
+            Video_Norm_To_Game(touch->origin_x, touch->origin_y, origin_x, origin_y);
+            Put_Mouse_Message(VK_LBUTTON, origin_x, origin_y, false);
+            Video_Norm_To_Game(touch->x, touch->y, game_x, game_y);
+            g_box_select = true;
+        } else if (!g_box_select && !g_long_press_sent && SDL_GetTicks() - touch->down_ms >= kLongPressMs
+                   && distance <= kMoveSlop) {
+            Put_Mouse_Message(VK_RBUTTON, game_x, game_y, false);
+            Put_Mouse_Message(VK_RBUTTON, game_x, game_y, true);
+            g_long_press_sent = true;
+        }
+        return;
+    }
+
+    AnalogScrollActive = false;
+}
+#endif
 
 bool WWKeyboardClassSDL2::Is_Gamepad_Active()
 {

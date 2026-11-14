@@ -1,0 +1,53 @@
+name: ios
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ios-ipa-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ipa:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Build unsigned arm64 IPA
+        run: bash scripts/build-ios-ipa.sh
+
+      - name: Record checksum
+        run: |
+          shasum -a 256 build/RedAlert-ios-unsigned.ipa | tee build/RedAlert-ios-unsigned.ipa.sha256
+          ls -lh build/RedAlert-ios-unsigned.ipa
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: redalert-ios-unsigned-ipa
+          path: |
+            build/RedAlert-ios-unsigned.ipa
+            build/RedAlert-ios-unsigned.ipa.sha256
+          if-no-files-found: error
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ios-redalert
+          name: Red Alert iOS (unsigned)
+          prerelease: true
+          body: |
+            Unsigned arm64 IPA of VanillaRA for sideloading (全能签 or a similar signer).
+            The archive contains no Red Alert game data. Copy your own MIX files into the app Documents folder after installing.
+            Minimum iOS version: 15.0. Bundle id: com.lin00700.redalert.
+          files: |
+            build/RedAlert-ios-unsigned.ipa
+            build/RedAlert-ios-unsigned.ipa.sha256
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

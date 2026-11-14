@@ -34,6 +34,7 @@
  * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
 #include "function.h"
+#include "common/ios_host.h"
 #include "textbtn.h"
 #include "common/framelimit.h"
 #include <time.h>
@@ -503,6 +504,19 @@ int Main_Menu(unsigned int)
     int d_exit_h = 9 * RESFACTOR;
     int d_exit_x = 102 * RESFACTOR; // Added V.Grippi
 
+#ifdef IOS_BUILD
+    {
+        const int menu_shift = IOS_Menu_Shift();
+        d_dialog_x += menu_shift;
+        d_dialog_cx = d_dialog_x + (d_dialog_w / 2);
+        d_start_x += menu_shift;
+        d_load_x += menu_shift;
+        d_multi_x += menu_shift;
+        d_intro_x += menu_shift;
+        d_exit_x += menu_shift;
+    }
+#endif
+
     int starty = d_dialog_y + (12 * RESFACTOR);
 
     static int max_buttons = 7;
@@ -615,10 +629,17 @@ int Main_Menu(unsigned int)
     /*
     **	Initialize
     */
+#ifdef IOS_BUILD
+    // The menu used to force RequiredCD back to "any CD" and then a missing
+    // file aborted with "CD not found". Documents stays the local disc.
+    RequiredCD = -2;
+    Force_CD_Available(RequiredCD);
+#else
     if (RequiredCD != -2) {
         RequiredCD = -1;
         Force_CD_Available(RequiredCD);
     }
+#endif
     Set_Logic_Page(SeenBuff);
     Keyboard->Clear();
     starttime = TickCount;

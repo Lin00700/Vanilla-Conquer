@@ -107,7 +107,13 @@ void ScrollClass::AI(KeyNumType& input, int x, int y)
 #endif
 
         if (!noscroll) {
+#ifdef IOS_BUILD
+            // The cursor stays where the finger lifted. Edge autoscroll would
+            // then pan forever. Two-finger drag scrolls instead.
+            bool at_screen_edge = false;
+#else
             bool at_screen_edge = (y == 0 || x == 0 || x >= SeenBuff.Get_Width() - 1 || y >= SeenBuff.Get_Height() - 1);
+#endif
 
             /*
 			**	Verify that the mouse is over a scroll region.

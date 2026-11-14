@@ -67,6 +67,7 @@
  * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
 #include "function.h"
+#include "common/ios_host.h"
 
 // void const * RadarClass::CoverShape;
 RadarClass::RTacticalClass RadarClass::RadarButton;
@@ -147,6 +148,9 @@ void RadarClass::One_Time(void)
     RadWidth = 80 * RESFACTOR;
     RadHeight = 70 * RESFACTOR;
     RadX = SeenBuff.Get_Width() - RadWidth;
+#ifdef IOS_BUILD
+    RadX -= IOS_Safe_Right_Game();
+#endif
     RadY = 7 * RESFACTOR;
     RadPWidth = 64 * RESFACTOR;
     RadPHeight = 64 * RESFACTOR;

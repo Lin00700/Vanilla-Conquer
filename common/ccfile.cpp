@@ -43,6 +43,7 @@
  *   CCFileClass::Write -- Writes data to the file (non mixfile files only).                   *
  * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 #include <errno.h>
+#include <stdio.h>
 #include "ccfile.h"
 
 /***********************************************************************************************
@@ -112,7 +113,21 @@ CCFileClass::CCFileClass(void)
 void CCFileClass::Error(int error, int canretry, char const* filename)
 {
     if (!Force_CD_Available(RequiredCD)) {
+#ifdef IOS_BUILD
+        char buf[512];
+        const char* name = filename != nullptr ? filename : File_Name();
+        if (name != nullptr && name[0] != '\0') {
+            snprintf(buf,
+                     sizeof(buf),
+                     "打不开 %s。手机上没有光驱；REDALERT.MIX 和 MAIN.MIX 需要放在「文件」App 里本应用的目录中。",
+                     name);
+        } else {
+            snprintf(buf, sizeof(buf), "打不开游戏文件。手机上没有光驱，数据应放在「文件」App 里本应用的目录中。");
+        }
+        Prog_End(buf, true);
+#else
         Prog_End("CCFileClass::Error CD not found", true);
+#endif
         if (!RunningAsDLL) { // PG
             // RA uses Emergency_Exit(EXIT_FAILURE); here, but common/td don't have it yet.
             exit(EXIT_FAILURE);

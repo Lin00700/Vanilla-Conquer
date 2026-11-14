@@ -61,10 +61,18 @@ public:
 extern SurfaceMonitorClass& AllSurfaces; // List of all surfaces
 
 bool Set_Video_Mode(int w, int h, int bits_per_pixel);
+// The visible surface was recreated at a new game resolution. Touch and the
+// stretch rectangle follow this size.
+void Video_Note_Game_Size(int w, int h);
 void Get_Video_Scale(float& x, float& y);
 void Set_Video_Cursor_Clip(bool clipped);
 void Move_Video_Mouse(float xrel, float yrel);
 void Get_Video_Mouse(int& x, int& y);
+#ifdef IOS_BUILD
+// Map a window point (SDL mouse coordinates) or a 0..1 touch into game pixels.
+void Video_Window_Point_To_Game(float window_x, float window_y, int& game_x, int& game_y);
+void Video_Norm_To_Game(float nx, float ny, int& game_x, int& game_y);
+#endif
 void Toggle_Video_Fullscreen();
 void Reset_Video_Mode();
 unsigned Get_Free_Video_Memory();

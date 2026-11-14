@@ -47,8 +47,17 @@ void Print_Error_End_Exit(char* string);
 void Print_Error_Exit(char* string);
 
 #ifdef SDL_BUILD
+#ifndef IOS_BUILD
 #define SDL_MAIN_HANDLED
+#endif
 #include <SDL.h>
+#ifdef IOS_BUILD
+#undef main
+#endif
+#endif
+
+#ifdef IOS_BUILD
+#include "common/ios_host.h"
 #endif
 
 #ifdef _WIN32
@@ -123,6 +132,42 @@ void Set_Resfactor_Globals(int resfactor)
 
     memcpy((void*)WindowList, (void*)windowlist, sizeof(windowlist));
 }
+
+#ifdef IOS_BUILD
+// Art, movies and menus are 320x200 or 640x400. A phone-sized buffer leaves
+// that picture on the left and a black bar on the right. Match the buffer to
+// the art, then let SDL stretch it over the landscape panel.
+void IOS_Match_Video_To_Art(void)
+{
+    int factor = RESFACTOR < 1 ? 1 : RESFACTOR;
+    int w = 320 * factor;
+    int h = 200 * factor;
+    ScreenWidth = w;
+    ScreenHeight = h;
+    Set_Resfactor_Globals(factor);
+    WindowList[WINDOW_MAIN][WINDOWX] = 0;
+    WindowList[WINDOW_MAIN][WINDOWY] = 0;
+    WindowList[WINDOW_MAIN][WINDOWWIDTH] = w;
+    WindowList[WINDOW_MAIN][WINDOWHEIGHT] = h;
+    WindowList[WINDOW_TACTICAL][WINDOWX] = 0;
+    WindowList[WINDOW_TACTICAL][WINDOWY] = 0;
+    WindowList[WINDOW_TACTICAL][WINDOWWIDTH] = w;
+    WindowList[WINDOW_TACTICAL][WINDOWHEIGHT] = h;
+
+    if (SeenBuff.Get_Width() == w && SeenBuff.Get_Height() == h) {
+        Video_Note_Game_Size(w, h);
+        return;
+    }
+
+    VisiblePage.Un_Init();
+    HiddenPage.Un_Init();
+    VisiblePage.Init(w, h, NULL, 0, (GBC_Enum)(GBC_VISIBLE | GBC_VIDEOMEM));
+    HiddenPage.Init(w, h, NULL, 0, (GBC_Enum)GBC_VIDEOMEM);
+    SeenBuff.Attach(&VisiblePage, 0, 0, w, h);
+    HidPage.Attach(&HiddenPage, 0, 0, w, h);
+    Video_Note_Game_Size(w, h);
+}
+#endif
 
 #if defined REMASTER_BUILD && defined _WIN32
 BOOL WINAPI DllMain(HINSTANCE instance, unsigned int fdwReason, void* lpvReserved)
@@ -275,8 +320,19 @@ int DLL_Startup(const char* command_line_in)
 }
 #endif //REMASTER_BUILD
 
-int main(int argc, char* argv[])
+#ifdef IOS_BUILD
+#define main SDL_main
+extern "C"
+#endif
+    int
+    main(int argc, char* argv[])
+#ifdef IOS_BUILD
+#undef main
+#endif
 {
+#ifdef IOS_BUILD
+    IOS_Wait_For_Game_Data();
+#endif
     UtfArgs args(argc, argv);
     WWDebugString("RA95 - Starting up.\n");
 
@@ -291,6 +347,14 @@ int main(int argc, char* argv[])
     */
     Paths.Init("vanillara", CONFIG_FILE_NAME, "REDALERT.MIX", args.ArgV[0]);
     CDFileClass::Refresh_Search_Drives();
+#ifdef IOS_BUILD
+    // Documents is already on the search path. -2 means "data is local",
+    // which is the only arrangement an iPhone can have.
+    RequiredCD = -2;
+    if (CurrentCD < 0) {
+        CurrentCD = 0;
+    }
+#endif
 
     if (Parse_Command_Line(args.ArgC, args.ArgV)) {
 
@@ -335,6 +399,28 @@ int main(int argc, char* argv[])
             ScreenHeight = 200;
         }
 #endif
+#ifdef IOS_BUILD
+        // Classic art size, stretched to the phone by SDL. Boxing stays off so
+        // that stretch is not letterboxed back into a 4:3 window.
+        Settings.Video.DOSMode = false;
+        Settings.Video.Boxing = false;
+        Settings.Video.Windowed = false;
+        Settings.Video.Width = 0;
+        Settings.Video.Height = 0;
+        Settings.Video.HardwareCursor = false;
+        Settings.Video.Scaler = "nearest";
+        Settings.Mouse.RawInput = false;
+        RESFACTOR = 2;
+        int ios_width = 0;
+        int ios_height = 0;
+        // Safe-area metrics only. The game buffer stays the size the art was
+        // drawn for; the phone stretches that buffer to the full panel.
+        IOS_Choose_Resolution(&ios_width, &ios_height);
+        (void)ios_width;
+        (void)ios_height;
+        ScreenWidth = 320 * RESFACTOR;
+        ScreenHeight = 200 * RESFACTOR;
+#endif
         Set_Resfactor_Globals(RESFACTOR);
 
 #if defined(_WIN32) && !defined(SDL_BUILD)
@@ -357,6 +443,10 @@ int main(int argc, char* argv[])
         if (!video_success) {
 #ifdef _WIN32
             MessageBoxA(MainWindow, TEXT_VIDEO_ERROR, TEXT_SHORT_TITLE, MB_ICONEXCLAMATION | MB_OK);
+#endif
+#ifdef IOS_BUILD
+            IOS_Show_Fatal(
+                "无法建立画面，所以停在这个说明上，而不是直接回到主屏幕。请把红色警戒从后台完全划掉后再打开。");
 #endif
             // if (Palette) delete Palette;
             return (EXIT_FAILURE);
@@ -381,6 +471,9 @@ int main(int argc, char* argv[])
             WWDebugString("\n");
 #ifdef _WIN32
             MessageBoxA(MainWindow, TEXT_DDRAW_ERROR, TEXT_SHORT_TITLE, MB_ICONEXCLAMATION | MB_OK);
+#endif
+#ifdef IOS_BUILD
+            IOS_Show_Fatal("画面缓冲没有建起来。请完全退出红色警戒后再打开一次。");
 #endif
             return (EXIT_FAILURE);
         }
@@ -452,9 +545,16 @@ int main(int argc, char* argv[])
         **	Check for forced intro movie run disabling. If the conquer
         **	configuration file says "no", then don't run the intro.
         */
+#ifdef IOS_BUILD
+        // The default PlayIntro=true would mark a first launch as an install,
+        // write REDALERT.INI before the mixes are mounted, and skip the menu.
+        // There is no intro movie next to the two MIX files.
+        Special.IsFromInstall = false;
+#else
         if (!Special.IsFromInstall) {
             Special.IsFromInstall = ini.Get_Bool("Intro", "PlayIntro", true);
         }
+#endif
         SlowPalette = ini.Get_Bool("Options", "SlowPalette", false);
 
         /*
@@ -623,7 +723,11 @@ void Prog_End(const char* why, bool fatal)
         GlyphX_Debug_Print(why);
     }
     if (fatal) {
+#ifdef IOS_BUILD
+        IOS_Show_Fatal(why != nullptr ? why : "启动过程中断。");
+#else
         *((int*)0) = 0;
+#endif
     }
 
     if (Session.Type == GAME_GLYPHX_MULTIPLAYER) {

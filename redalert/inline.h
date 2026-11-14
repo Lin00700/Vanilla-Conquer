@@ -889,8 +889,17 @@ inline FacingType Dir_To_8(DirType facing)
  * HISTORY:                                                                                    *
  *   08/26/1996 JLB : Created.                                                                 *
  *=============================================================================================*/
+#ifdef IOS_BUILD
+extern char const* IOS_Chinese_String(int string);
+#endif
+
 inline char const* Text_String(int string)
 {
+#ifdef IOS_BUILD
+    if (char const* zh = IOS_Chinese_String(string)) {
+        return zh;
+    }
+#endif
 #ifdef FIXIT_NAME_OVERRIDE
     if (string < 0 && abs(string) < ARRAY_SIZE(NameOverride)) {
         return (NameOverride[-(string + 1)]);

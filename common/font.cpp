@@ -38,6 +38,7 @@
 #include "file.h"
 #include "memflag.h"
 #include "endianness.h"
+#include "ios_cjk.h"
 
 #include <errno.h>
 #include <string.h>
@@ -133,7 +134,14 @@ void* Set_Font(void const* fontptr)
  *=========================================================================*/
 int Char_Pixel_Width(char chr)
 {
-    int width = (unsigned char)*(FontWidthBlockPtr + (unsigned char)chr) + FontXSpacing;
+    unsigned char glyph = (unsigned char)chr;
+#ifdef IOS_BUILD
+    // Slots outside printable ASCII belong to the Chinese font, not 6POINT.FNT.
+    if ((glyph < 32 || glyph >= 127) && IOS_CJK_Glyph_Width(glyph) > 0) {
+        return IOS_CJK_Glyph_Width(glyph) + FontXSpacing;
+    }
+#endif
+    int width = (unsigned char)*(FontWidthBlockPtr + glyph) + FontXSpacing;
 
     return (width);
 }
@@ -313,8 +321,48 @@ struct FontHeader
  *   01/17/1995 PWG : Created.                                             *
  *   18/08/2020 OmniBlade : Translation to C++ added.                      *
  *=========================================================================*/
+#ifdef IOS_BUILD
+static bool String_Uses_CJK(const char* string)
+{
+    if (string == nullptr || IOS_CJK_Font() == nullptr) {
+        return false;
+    }
+    for (const unsigned char* p = reinterpret_cast<const unsigned char*>(string); *p != 0; ++p) {
+        if ((*p < 32 || *p >= 127) && *p != '\n' && *p != '\r' && IOS_CJK_Glyph_Width(*p) > 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+struct CJKFontScope
+{
+    const void* saved;
+    bool on;
+    explicit CJKFontScope(const char* string)
+        : saved(nullptr)
+        , on(false)
+    {
+        if (String_Uses_CJK(string)) {
+            saved = FontPtr;
+            FontPtr = IOS_CJK_Font();
+            on = true;
+        }
+    }
+    ~CJKFontScope()
+    {
+        if (on) {
+            FontPtr = saved;
+        }
+    }
+};
+#endif
+
 int Buffer_Print(void* thisptr, const char* string, int x, int y, int fground, int bground)
 {
+#ifdef IOS_BUILD
+    CJKFontScope cjk_font(string);
+#endif
     GraphicViewPortClass& vp = *static_cast<GraphicViewPortClass*>(thisptr);
     const FontHeader* fntheader = reinterpret_cast<const FontHeader*>(FontPtr);
     int pitch = vp.Get_XAdd() + vp.Get_Width() + vp.Get_Pitch();

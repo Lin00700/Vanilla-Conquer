@@ -39,6 +39,7 @@ set(COMMON_SRC
     filepcx.cpp
     fixed.cpp
     font.cpp
+    ios_cjk.cpp
     gadget.cpp
     getshape.cpp
     graphicsviewport.cpp

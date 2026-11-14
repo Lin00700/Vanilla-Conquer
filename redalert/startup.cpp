@@ -133,6 +133,42 @@ void Set_Resfactor_Globals(int resfactor)
     memcpy((void*)WindowList, (void*)windowlist, sizeof(windowlist));
 }
 
+#ifdef IOS_BUILD
+// Art, movies and menus are 320x200 or 640x400. A phone-sized buffer leaves
+// that picture on the left and a black bar on the right. Match the buffer to
+// the art, then let SDL stretch it over the landscape panel.
+void IOS_Match_Video_To_Art(void)
+{
+    int factor = RESFACTOR < 1 ? 1 : RESFACTOR;
+    int w = 320 * factor;
+    int h = 200 * factor;
+    ScreenWidth = w;
+    ScreenHeight = h;
+    Set_Resfactor_Globals(factor);
+    WindowList[WINDOW_MAIN][WINDOWX] = 0;
+    WindowList[WINDOW_MAIN][WINDOWY] = 0;
+    WindowList[WINDOW_MAIN][WINDOWWIDTH] = w;
+    WindowList[WINDOW_MAIN][WINDOWHEIGHT] = h;
+    WindowList[WINDOW_TACTICAL][WINDOWX] = 0;
+    WindowList[WINDOW_TACTICAL][WINDOWY] = 0;
+    WindowList[WINDOW_TACTICAL][WINDOWWIDTH] = w;
+    WindowList[WINDOW_TACTICAL][WINDOWHEIGHT] = h;
+
+    if (SeenBuff.Get_Width() == w && SeenBuff.Get_Height() == h) {
+        Video_Note_Game_Size(w, h);
+        return;
+    }
+
+    VisiblePage.Un_Init();
+    HiddenPage.Un_Init();
+    VisiblePage.Init(w, h, NULL, 0, (GBC_Enum)(GBC_VISIBLE | GBC_VIDEOMEM));
+    HiddenPage.Init(w, h, NULL, 0, (GBC_Enum)GBC_VIDEOMEM);
+    SeenBuff.Attach(&VisiblePage, 0, 0, w, h);
+    HidPage.Attach(&HiddenPage, 0, 0, w, h);
+    Video_Note_Game_Size(w, h);
+}
+#endif
+
 #if defined REMASTER_BUILD && defined _WIN32
 BOOL WINAPI DllMain(HINSTANCE instance, unsigned int fdwReason, void* lpvReserved)
 {
@@ -364,7 +400,8 @@ extern "C"
         }
 #endif
 #ifdef IOS_BUILD
-        // Fit the phone. Ignore a copied ini that would letterbox or stretch.
+        // Classic art size, stretched to the phone by SDL. Boxing stays off so
+        // that stretch is not letterboxed back into a 4:3 window.
         Settings.Video.DOSMode = false;
         Settings.Video.Boxing = false;
         Settings.Video.Windowed = false;
@@ -376,23 +413,15 @@ extern "C"
         RESFACTOR = 2;
         int ios_width = 0;
         int ios_height = 0;
+        // Safe-area metrics only. The game buffer stays the size the art was
+        // drawn for; the phone stretches that buffer to the full panel.
         IOS_Choose_Resolution(&ios_width, &ios_height);
-        if (ios_width >= 320 && ios_height >= 200) {
-            ScreenWidth = ios_width;
-            ScreenHeight = ios_height;
-        }
+        (void)ios_width;
+        (void)ios_height;
+        ScreenWidth = 320 * RESFACTOR;
+        ScreenHeight = 200 * RESFACTOR;
 #endif
         Set_Resfactor_Globals(RESFACTOR);
-#ifdef IOS_BUILD
-        WindowList[WINDOW_MAIN][WINDOWX] = 0;
-        WindowList[WINDOW_MAIN][WINDOWY] = 0;
-        WindowList[WINDOW_MAIN][WINDOWWIDTH] = ScreenWidth;
-        WindowList[WINDOW_MAIN][WINDOWHEIGHT] = ScreenHeight;
-        WindowList[WINDOW_TACTICAL][WINDOWX] = 0;
-        WindowList[WINDOW_TACTICAL][WINDOWY] = 0;
-        WindowList[WINDOW_TACTICAL][WINDOWWIDTH] = ScreenWidth;
-        WindowList[WINDOW_TACTICAL][WINDOWHEIGHT] = ScreenHeight;
-#endif
 
 #if defined(_WIN32) && !defined(SDL_BUILD)
         /* WinMain seems to pass command_show to Create_Main_Window, but since we

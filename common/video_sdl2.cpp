@@ -172,29 +172,16 @@ static void Update_HWCursor_Settings()
 
 #ifdef IOS_BUILD
     /*
-    ** The game buffer is the panel's point size (same aspect as the drawable).
-    ** Scale it uniformly onto the pixel drawable with nearest filtering.
-    ** When points × nativeScale is the drawable (every current iPhone, 2x or
-    ** 3x), the destination is the full panel and ScaleX == ScaleY exactly.
-    ** A 1px remainder is snapped to the panel so it cannot become a bar.
+    ** Stretch the classic 320x200 / 640x400 buffer over the whole drawable.
+    ** A uniform fit leaves a wide black bar on a 19.5:9 phone. Filling the
+    ** panel wins; nearest filtering stays on so the pixels stay sharp.
     */
-    {
-        const float uniform = hwcursor.GameH > 0 ? (float)win_h / (float)hwcursor.GameH : 1.0f;
-        int dest_w = (int)std::lround((float)hwcursor.GameW * uniform);
-        int dest_h = (int)std::lround((float)hwcursor.GameH * uniform);
-        const int width_error = dest_w > win_w ? dest_w - win_w : win_w - dest_w;
-        const int height_error = dest_h > win_h ? dest_h - win_h : win_h - dest_h;
-        if (width_error <= 2 && height_error <= 2) {
-            dest_w = win_w;
-            dest_h = win_h;
-        }
-        render_dst.w = dest_w;
-        render_dst.h = dest_h;
-        render_dst.x = (win_w - dest_w) / 2;
-        render_dst.y = (win_h - dest_h) / 2;
-        hwcursor.ScaleX = hwcursor.GameW > 0 ? (float)render_dst.w / (float)hwcursor.GameW : 1.0f;
-        hwcursor.ScaleY = hwcursor.GameH > 0 ? (float)render_dst.h / (float)hwcursor.GameH : 1.0f;
-    }
+    render_dst.x = 0;
+    render_dst.y = 0;
+    render_dst.w = win_w;
+    render_dst.h = win_h;
+    hwcursor.ScaleX = hwcursor.GameW > 0 ? (float)win_w / (float)hwcursor.GameW : 1.0f;
+    hwcursor.ScaleY = hwcursor.GameH > 0 ? (float)win_h / (float)hwcursor.GameH : 1.0f;
 #endif
 
     /*
@@ -430,6 +417,21 @@ void Toggle_Video_Fullscreen()
     }
 
     Update_HWCursor_Settings();
+}
+
+void Video_Note_Game_Size(int w, int h)
+{
+    if (w < 1) {
+        w = 1;
+    }
+    if (h < 1) {
+        h = 1;
+    }
+    hwcursor.GameW = w;
+    hwcursor.GameH = h;
+    if (renderer != nullptr) {
+        Update_HWCursor_Settings();
+    }
 }
 
 void Get_Video_Scale(float& x, float& y)

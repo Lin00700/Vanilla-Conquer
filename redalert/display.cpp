@@ -605,7 +605,7 @@ void DisplayClass::Set_View_Dimensions(int x, int y, int width, int height)
     TacButton.Height = Lepton_To_Pixel(TacLeptonHeight);
 #ifdef IOS_BUILD
     if (sidebar_up) {
-        int sidebar_left = SeenBuff.Get_Width() - (SIDEBAR_WID * RESFACTOR) - IOS_Safe_Right_Pixels();
+        int sidebar_left = SeenBuff.Get_Width() - (SIDEBAR_WID * RESFACTOR) - IOS_Safe_Right_Game();
         if (sidebar_left < x + 1) {
             sidebar_left = x + 1;
         }

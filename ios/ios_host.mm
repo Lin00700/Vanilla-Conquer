@@ -1,23 +1,21 @@
 // UIKit host for the iOS Red Alert client.
 //
 // Scaling (this is the contract the rest of the port relies on):
-//   * The game framebuffer is the phone's landscape size in POINTS, not a
-//     stretched 640x400. A 19.5:9 phone therefore gets a framebuffer of that
-//     aspect, and the tactical map is widened to match, so more of the map
-//     is visible. Sidebar art stays at the engine's hires size (RESFACTOR 2),
-//     which is one point per asset pixel — the same density the desktop
-//     hires mode uses.
+//   * The game framebuffer is the classic picture: 640x400 when hires art is
+//     present, otherwise 320x200. Menus, briefings and the map are drawn into
+//     that buffer. SDL stretches it over the whole landscape panel with
+//     nearest filtering, so a wide phone does not keep a black bar beside a
+//     4:3 picture. Pixels are not square on a 19.5:9 screen; filling the
+//     panel comes first.
 //   * SDL presents that buffer with SDL_WINDOW_ALLOW_HIGHDPI and nearest
-//     filtering. On current iPhones the drawable is exactly points × 2 or
-//     points × 3, so each game pixel becomes a square block of device pixels.
-//     The destination rectangle is the full drawable: no bars, no non-uniform
-//     scale. A one-pixel remainder, if a future panel is not an exact multiple,
-//     is snapped onto the drawable rather than left as a bar.
-//   * The notch / Dynamic Island is not letterboxed. The map is drawn under
-//     it. The sidebar is shifted in by the safe-area inset so its buttons
-//     stay tappable. The status bar is hidden and the home indicator is
-//     auto-hidden with edge gestures deferred (see the view-controller
-//     category below, plus SDL_HINT_IOS_HIDE_HOME_INDICATOR).
+//     filtering. The destination rectangle is the full drawable, so the
+//     classic picture is stretched to the panel. On a wide phone the pixels
+//     are wider than they are tall.
+//   * The notch / Dynamic Island is not a black bar. The sidebar is shifted
+//     in by a few game pixels so its buttons stay tappable. The status bar is
+//     hidden and the home indicator is auto-hidden with edge gestures
+//     deferred (see the view-controller category below, plus
+//     SDL_HINT_IOS_HIDE_HOME_INDICATOR).
 #import <UIKit/UIKit.h>
 
 #include "ios_host.h"

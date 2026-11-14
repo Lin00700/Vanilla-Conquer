@@ -115,6 +115,7 @@ set(REDALERT_SRC
     sounddlg.cpp
     special.cpp
     startup.cpp
+    ios_text.cpp
     statbtn.cpp
     stats.cpp
     super.cpp

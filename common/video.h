@@ -61,6 +61,9 @@ public:
 extern SurfaceMonitorClass& AllSurfaces; // List of all surfaces
 
 bool Set_Video_Mode(int w, int h, int bits_per_pixel);
+// The visible surface was recreated at a new game resolution. Touch and the
+// stretch rectangle follow this size.
+void Video_Note_Game_Size(int w, int h);
 void Get_Video_Scale(float& x, float& y);
 void Set_Video_Cursor_Clip(bool clipped);
 void Move_Video_Mouse(float xrel, float yrel);

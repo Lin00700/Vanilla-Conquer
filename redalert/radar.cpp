@@ -149,7 +149,7 @@ void RadarClass::One_Time(void)
     RadHeight = 70 * RESFACTOR;
     RadX = SeenBuff.Get_Width() - RadWidth;
 #ifdef IOS_BUILD
-    RadX -= IOS_Safe_Right_Pixels();
+    RadX -= IOS_Safe_Right_Game();
 #endif
     RadY = 7 * RESFACTOR;
     RadPWidth = 64 * RESFACTOR;

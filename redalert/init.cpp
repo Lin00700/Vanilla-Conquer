@@ -59,6 +59,7 @@
 #include "function.h"
 #ifdef IOS_BUILD
 #include "common/ios_host.h"
+void IOS_Match_Video_To_Art(void);
 #endif
 #include "language.h"
 #include "msgbox.h"
@@ -2378,6 +2379,9 @@ static void Init_Bootstrap_Mixfiles(void)
     }
 
     RequiredCD = temp;
+#ifdef IOS_BUILD
+    IOS_Match_Video_To_Art();
+#endif
 }
 
 /***********************************************************************************************

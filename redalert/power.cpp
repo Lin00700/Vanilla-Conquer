@@ -247,15 +247,15 @@ void PowerClass::Draw_It(bool complete)
                     bottom = (175 * RESFACTOR) + 1;
 
                     LogicPage->Fill_Rect(245 * RESFACTOR + IOS_Chrome_Shift(),
-                                          bottom - power_height,
-                                          245 * RESFACTOR + IOS_Chrome_Shift() + 1,
-                                          bottom,
-                                          color2);
+                                         bottom - power_height,
+                                         245 * RESFACTOR + IOS_Chrome_Shift() + 1,
+                                         bottom,
+                                         color2);
                     LogicPage->Fill_Rect(246 * RESFACTOR + IOS_Chrome_Shift(),
-                                          bottom - power_height,
-                                          246 * RESFACTOR + IOS_Chrome_Shift() + 1,
-                                          bottom,
-                                          color1);
+                                         bottom - power_height,
+                                         246 * RESFACTOR + IOS_Chrome_Shift() + 1,
+                                         bottom,
+                                         color1);
                 }
 
                 /*

@@ -65,7 +65,7 @@ void WWKeyboardClassSDL2::Fill_Buffer_From_System(void)
 #else
             Move_Video_Mouse(static_cast<float>(event.motion.xrel), static_cast<float>(event.motion.yrel));
 #endif
-            break;
+        break;
         case SDL_FINGERDOWN:
         case SDL_FINGERUP:
         case SDL_FINGERMOTION:
@@ -160,76 +160,76 @@ void WWKeyboardClassSDL2::Fill_Buffer_From_System(void)
 #ifdef IOS_BUILD
 namespace
 {
-struct TouchPoint
-{
-    SDL_FingerID id = 0;
-    float x = 0.0f;
-    float y = 0.0f;
-    float origin_x = 0.0f;
-    float origin_y = 0.0f;
-    Uint32 down_ms = 0;
-    bool down = false;
-};
+    struct TouchPoint
+    {
+        SDL_FingerID id = 0;
+        float x = 0.0f;
+        float y = 0.0f;
+        float origin_x = 0.0f;
+        float origin_y = 0.0f;
+        Uint32 down_ms = 0;
+        bool down = false;
+    };
 
-TouchPoint g_touches[2];
-int g_touch_count = 0;
-bool g_box_select = false;
-bool g_long_press_sent = false;
-bool g_pan_sent = false;
-bool g_two_finger = false;
-float g_pan_x = 0.0f;
-float g_pan_y = 0.0f;
-Uint32 g_pan_ms = 0;
+    TouchPoint g_touches[2];
+    int g_touch_count = 0;
+    bool g_box_select = false;
+    bool g_long_press_sent = false;
+    bool g_pan_sent = false;
+    bool g_two_finger = false;
+    float g_pan_x = 0.0f;
+    float g_pan_y = 0.0f;
+    Uint32 g_pan_ms = 0;
 
-constexpr Uint32 kLongPressMs = 450;
-constexpr Uint32 kPanIdleMs = 90;
-constexpr float kMoveSlop = 0.012f;
+    constexpr Uint32 kLongPressMs = 450;
+    constexpr Uint32 kPanIdleMs = 90;
+    constexpr float kMoveSlop = 0.012f;
 
-int Touch_Index(SDL_FingerID id)
-{
-    for (int i = 0; i < 2; ++i) {
-        if (g_touches[i].down && g_touches[i].id == id) {
-            return i;
+    int Touch_Index(SDL_FingerID id)
+    {
+        for (int i = 0; i < 2; ++i) {
+            if (g_touches[i].down && g_touches[i].id == id) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    int Touch_Free()
+    {
+        for (int i = 0; i < 2; ++i) {
+            if (!g_touches[i].down) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    float Touch_Distance(const TouchPoint& touch)
+    {
+        const float dx = touch.x - touch.origin_x;
+        const float dy = touch.y - touch.origin_y;
+        return std::sqrt(dx * dx + dy * dy);
+    }
+
+    void Touch_Centroid(float& x, float& y)
+    {
+        x = 0.0f;
+        y = 0.0f;
+        int count = 0;
+        for (int i = 0; i < 2; ++i) {
+            if (!g_touches[i].down) {
+                continue;
+            }
+            x += g_touches[i].x;
+            y += g_touches[i].y;
+            ++count;
+        }
+        if (count > 0) {
+            x /= (float)count;
+            y /= (float)count;
         }
     }
-    return -1;
-}
-
-int Touch_Free()
-{
-    for (int i = 0; i < 2; ++i) {
-        if (!g_touches[i].down) {
-            return i;
-        }
-    }
-    return -1;
-}
-
-float Touch_Distance(const TouchPoint& touch)
-{
-    const float dx = touch.x - touch.origin_x;
-    const float dy = touch.y - touch.origin_y;
-    return std::sqrt(dx * dx + dy * dy);
-}
-
-void Touch_Centroid(float& x, float& y)
-{
-    x = 0.0f;
-    y = 0.0f;
-    int count = 0;
-    for (int i = 0; i < 2; ++i) {
-        if (!g_touches[i].down) {
-            continue;
-        }
-        x += g_touches[i].x;
-        y += g_touches[i].y;
-        ++count;
-    }
-    if (count > 0) {
-        x /= (float)count;
-        y /= (float)count;
-    }
-}
 } // namespace
 
 void WWKeyboardClassSDL2::Handle_Touch_Event(const SDL_Event& event)

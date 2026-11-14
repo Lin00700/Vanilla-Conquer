@@ -288,7 +288,8 @@ int DLL_Startup(const char* command_line_in)
 #define main SDL_main
 extern "C"
 #endif
-int main(int argc, char* argv[])
+    int
+    main(int argc, char* argv[])
 #ifdef IOS_BUILD
 #undef main
 #endif

@@ -119,12 +119,8 @@ void TabClass::Draw_It(bool complete)
                          TBLACK,
                          TPF_METAL12 | TPF_CENTER | TPF_USE_GRAD_PAL);
         if (Options.ToggleSidebar) {
-            CC_Draw_Shape(TabShape,
-                          6,
-                          (320 - EVA_WIDTH) * RESFACTOR + IOS_Chrome_Shift(),
-                          0,
-                          WINDOW_MAIN,
-                          SHAPE_NORMAL);
+            CC_Draw_Shape(
+                TabShape, 6, (320 - EVA_WIDTH) * RESFACTOR + IOS_Chrome_Shift(), 0, WINDOW_MAIN, SHAPE_NORMAL);
             Fancy_Text_Print(TXT_TAB_SIDEBAR,
                              (320 - (EVA_WIDTH / 2)) * RESFACTOR + IOS_Chrome_Shift(),
                              0,
@@ -153,16 +149,30 @@ void TabClass::Draw_Credits_Tab(void)
                       WINDOW_MAIN,
                       SHAPE_NORMAL);
     } else {
-        CC_Draw_Shape(
-            TabShape, Map.MoneyFlashTimer > 1 ? 8 : 6, (320 - EVA_WIDTH) * RESFACTOR + IOS_Chrome_Shift(), 0, WINDOW_MAIN, SHAPE_NORMAL);
+        CC_Draw_Shape(TabShape,
+                      Map.MoneyFlashTimer > 1 ? 8 : 6,
+                      (320 - EVA_WIDTH) * RESFACTOR + IOS_Chrome_Shift(),
+                      0,
+                      WINDOW_MAIN,
+                      SHAPE_NORMAL);
     }
 
     if (Scen.MissionTimer.Is_Active()) {
         bool light = ((int)Scen.MissionTimer < TICKS_PER_MINUTE * Rule.TimerWarning) || Map.FlasherTimer > 0;
         if (Options.ToggleSidebar) {
-            CC_Draw_Shape(TabShape, light ? 4 : 2, (320 - (EVA_WIDTH * 3)) * RESFACTOR + IOS_Chrome_Shift(), 0, WINDOW_MAIN, SHAPE_NORMAL);
+            CC_Draw_Shape(TabShape,
+                          light ? 4 : 2,
+                          (320 - (EVA_WIDTH * 3)) * RESFACTOR + IOS_Chrome_Shift(),
+                          0,
+                          WINDOW_MAIN,
+                          SHAPE_NORMAL);
         } else {
-            CC_Draw_Shape(TabShape, light ? 4 : 2, (320 - (EVA_WIDTH * 2)) * RESFACTOR + IOS_Chrome_Shift(), 0, WINDOW_MAIN, SHAPE_NORMAL);
+            CC_Draw_Shape(TabShape,
+                          light ? 4 : 2,
+                          (320 - (EVA_WIDTH * 2)) * RESFACTOR + IOS_Chrome_Shift(),
+                          0,
+                          WINDOW_MAIN,
+                          SHAPE_NORMAL);
         }
     }
 }

@@ -218,9 +218,9 @@ if(BUILD_REMASTERRA)
 endif()
 
 if(BUILD_VANILLARA)
-    include(BuildIcons)
     # iOS uses the plist display name; a macOS .icns is not part of the IPA.
     if(NOT CMAKE_SYSTEM_NAME STREQUAL "iOS")
+        include(BuildIcons)
         make_icon(INPUT "${CMAKE_SOURCE_DIR}/resources/vanillara_icon.svg" OUTPUT VANILLARA_ICON)
     endif()
 

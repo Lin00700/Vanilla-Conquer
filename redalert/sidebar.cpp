@@ -759,7 +759,8 @@ void SidebarClass::Draw_It(bool complete)
             /*
             ** The sidebar shape is too big in 640x400 so it needs to be drawn in three chunks.
             */
-            CC_Draw_Shape(SidebarShape, 0, SIDE_X * RESFACTOR + IOS_Chrome_Shift(), 8 * RESFACTOR, WINDOW_MAIN, SHAPE_WIN_REL);
+            CC_Draw_Shape(
+                SidebarShape, 0, SIDE_X * RESFACTOR + IOS_Chrome_Shift(), 8 * RESFACTOR, WINDOW_MAIN, SHAPE_WIN_REL);
             CC_Draw_Shape(SidebarMiddleShape,
                           shape,
                           SIDE_X * RESFACTOR + IOS_Chrome_Shift(),

@@ -86,6 +86,7 @@
  * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
 #include "function.h"
+#include "common/ios_host.h"
 #include "vortex.h"
 #include "xpipe.h"
 #include "common/fading.h"
@@ -542,6 +543,14 @@ short const* DisplayClass::Text_Overlap_List(char const* text, int x, int y) con
  *=============================================================================================*/
 void DisplayClass::Set_View_Dimensions(int x, int y, int width, int height)
 {
+#ifdef IOS_BUILD
+    // A requested width means the sidebar is up. Paint the map across the whole
+    // framebuffer anyway (so the notch side is terrain, not a bar) and keep
+    // clicks out of the sidebar.
+    const bool sidebar_up = width != -1;
+    width = -1;
+    height = -1;
+#endif
     if (width == -1) {
         TacLeptonWidth = Pixel_To_Lepton(SeenBuff.Get_Width() - x);
     } else {
@@ -594,6 +603,15 @@ void DisplayClass::Set_View_Dimensions(int x, int y, int width, int height)
     TacButton.Y = TacPixelY;
     TacButton.Width = Lepton_To_Pixel(TacLeptonWidth);
     TacButton.Height = Lepton_To_Pixel(TacLeptonHeight);
+#ifdef IOS_BUILD
+    if (sidebar_up) {
+        int sidebar_left = SeenBuff.Get_Width() - (SIDEBAR_WID * RESFACTOR) - IOS_Safe_Right_Pixels();
+        if (sidebar_left < x + 1) {
+            sidebar_left = x + 1;
+        }
+        TacButton.Width = sidebar_left - x;
+    }
+#endif
 }
 
 /***********************************************************************************************

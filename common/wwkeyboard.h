@@ -39,8 +39,16 @@
 #include <stdint.h>
 
 #ifdef SDL_BUILD
+// iOS must not define SDL_MAIN_HANDLED: SDL renames main to SDL_main and
+// libSDL2main provides the UIKit entry point.
+#ifndef IOS_BUILD
 #define SDL_MAIN_HANDLED
+#endif
 #include <SDL.h>
+#ifdef IOS_BUILD
+// Keep the SDL_main rename from leaking into every translation unit.
+#undef main
+#endif
 #endif
 
 typedef enum

@@ -47,8 +47,17 @@ void Print_Error_End_Exit(char* string);
 void Print_Error_Exit(char* string);
 
 #ifdef SDL_BUILD
+#ifndef IOS_BUILD
 #define SDL_MAIN_HANDLED
+#endif
 #include <SDL.h>
+#ifdef IOS_BUILD
+#undef main
+#endif
+#endif
+
+#ifdef IOS_BUILD
+#include "common/ios_host.h"
 #endif
 
 #ifdef _WIN32
@@ -275,8 +284,18 @@ int DLL_Startup(const char* command_line_in)
 }
 #endif //REMASTER_BUILD
 
+#ifdef IOS_BUILD
+#define main SDL_main
+extern "C"
+#endif
 int main(int argc, char* argv[])
+#ifdef IOS_BUILD
+#undef main
+#endif
 {
+#ifdef IOS_BUILD
+    IOS_Wait_For_Game_Data();
+#endif
     UtfArgs args(argc, argv);
     WWDebugString("RA95 - Starting up.\n");
 
@@ -335,7 +354,36 @@ int main(int argc, char* argv[])
             ScreenHeight = 200;
         }
 #endif
+#ifdef IOS_BUILD
+        // Fit the phone. Ignore a copied ini that would letterbox or stretch.
+        Settings.Video.DOSMode = false;
+        Settings.Video.Boxing = false;
+        Settings.Video.Windowed = false;
+        Settings.Video.Width = 0;
+        Settings.Video.Height = 0;
+        Settings.Video.HardwareCursor = false;
+        Settings.Video.Scaler = "nearest";
+        Settings.Mouse.RawInput = false;
+        RESFACTOR = 2;
+        int ios_width = 0;
+        int ios_height = 0;
+        IOS_Choose_Resolution(&ios_width, &ios_height);
+        if (ios_width >= 320 && ios_height >= 200) {
+            ScreenWidth = ios_width;
+            ScreenHeight = ios_height;
+        }
+#endif
         Set_Resfactor_Globals(RESFACTOR);
+#ifdef IOS_BUILD
+        WindowList[WINDOW_MAIN][WINDOWX] = 0;
+        WindowList[WINDOW_MAIN][WINDOWY] = 0;
+        WindowList[WINDOW_MAIN][WINDOWWIDTH] = ScreenWidth;
+        WindowList[WINDOW_MAIN][WINDOWHEIGHT] = ScreenHeight;
+        WindowList[WINDOW_TACTICAL][WINDOWX] = 0;
+        WindowList[WINDOW_TACTICAL][WINDOWY] = 0;
+        WindowList[WINDOW_TACTICAL][WINDOWWIDTH] = ScreenWidth;
+        WindowList[WINDOW_TACTICAL][WINDOWHEIGHT] = ScreenHeight;
+#endif
 
 #if defined(_WIN32) && !defined(SDL_BUILD)
         /* WinMain seems to pass command_show to Create_Main_Window, but since we

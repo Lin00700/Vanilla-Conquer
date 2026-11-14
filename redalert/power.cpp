@@ -42,6 +42,7 @@
  * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
 #include "function.h"
+#include "common/ios_host.h"
 
 /*
 **	Points to the shape to use for the "desired" power level indicator.
@@ -137,7 +138,7 @@ void PowerClass::One_Time(void)
     bool dosmode = (RESFACTOR == 1);
     POWER_Y = (dosmode) ? (88 + 9) : (7 + 70 + 13);
     POWER_HEIGHT = (dosmode) ? (80) : (200 - POWER_Y);
-    PowerButton.X = POWER_X * RESFACTOR;
+    PowerButton.X = POWER_X * RESFACTOR + IOS_Chrome_Shift();
     PowerButton.Y = POWER_Y * RESFACTOR;
     PowerButton.Width = (POWER_WIDTH * RESFACTOR) - 1;
     PowerButton.Height = POWER_HEIGHT * RESFACTOR;
@@ -245,8 +246,16 @@ void PowerClass::Draw_It(bool complete)
                     }
                     bottom = (175 * RESFACTOR) + 1;
 
-                    LogicPage->Fill_Rect(245 * RESFACTOR, bottom - power_height, 245 * RESFACTOR + 1, bottom, color2);
-                    LogicPage->Fill_Rect(246 * RESFACTOR, bottom - power_height, 246 * RESFACTOR + 1, bottom, color1);
+                    LogicPage->Fill_Rect(245 * RESFACTOR + IOS_Chrome_Shift(),
+                                          bottom - power_height,
+                                          245 * RESFACTOR + IOS_Chrome_Shift() + 1,
+                                          bottom,
+                                          color2);
+                    LogicPage->Fill_Rect(246 * RESFACTOR + IOS_Chrome_Shift(),
+                                          bottom - power_height,
+                                          246 * RESFACTOR + IOS_Chrome_Shift() + 1,
+                                          bottom,
+                                          color1);
                 }
 
                 /*
@@ -254,7 +263,7 @@ void PowerClass::Draw_It(bool complete)
                 */
                 CC_Draw_Shape(PowerShape,
                               0,
-                              (POWER_X * RESFACTOR) + RESFACTOR,
+                              (POWER_X * RESFACTOR) + RESFACTOR + IOS_Chrome_Shift(),
                               bottom - (drain_height + (2 * RESFACTOR)),
                               WINDOW_MAIN,
                               flags | SHAPE_NORMAL,

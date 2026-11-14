@@ -11,6 +11,9 @@
 // with this program. If not, see https://github.com/electronicarts/CnC_Remastered_Collection
 #include "paths.h"
 #include "debugstring.h"
+#ifdef IOS_BUILD
+#include "ios_host.h"
+#endif
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -178,6 +181,12 @@ const char* PathsClass::Program_Path()
 
 const char* PathsClass::Data_Path()
 {
+#ifdef IOS_BUILD
+    if (DataPath.empty()) {
+        DataPath = IOS_Documents_Directory();
+    }
+    return DataPath.c_str();
+#endif
     if (DataPath.empty()) {
         if (ProgramPath.empty()) {
             // Init the program path first if it hasn't been done already.
@@ -196,6 +205,13 @@ const char* PathsClass::Data_Path()
 
 const char* PathsClass::User_Path()
 {
+#ifdef IOS_BUILD
+    if (UserPath.empty()) {
+        UserPath = IOS_Documents_Directory();
+        Create_Directory(UserPath.c_str());
+    }
+    return UserPath.c_str();
+#endif
     if (UserPath.empty()) {
 #ifdef __APPLE__
         UserPath = User_Home() + "/Library/Application Support/Vanilla-Conquer";

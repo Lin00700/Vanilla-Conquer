@@ -219,8 +219,10 @@ endif()
 
 if(BUILD_VANILLARA)
     include(BuildIcons)
-    # Create the custom command for generating the ico file for windows.
-    make_icon(INPUT "${CMAKE_SOURCE_DIR}/resources/vanillara_icon.svg" OUTPUT VANILLARA_ICON)
+    # iOS uses the plist display name; a macOS .icns is not part of the IPA.
+    if(NOT CMAKE_SYSTEM_NAME STREQUAL "iOS")
+        make_icon(INPUT "${CMAKE_SOURCE_DIR}/resources/vanillara_icon.svg" OUTPUT VANILLARA_ICON)
+    endif()
 
     if(WIN32 OR CMAKE_SYSTEM_NAME STREQUAL "Windows")
         # Generate windows version info.
@@ -242,7 +244,9 @@ if(BUILD_VANILLARA)
     add_executable(VanillaRA ${REDALERT_SRC} ${REDALERT_NET_SRC} ${REDALERT_HEADERS} ${VANILLARA_RC} ${VANILLARA_ICON})
 
     if(MAKE_BUNDLE)
-        set_source_files_properties(${VANILLARA_ICON} PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
+        if(VANILLARA_ICON)
+            set_source_files_properties(${VANILLARA_ICON} PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
+        endif()
         set_target_properties(VanillaRA PROPERTIES
             MACOSX_BUNDLE True
             MACOSX_BUNDLE_GUI_IDENTIFIER com.vanilla-conquer.vanillara
@@ -250,8 +254,26 @@ if(BUILD_VANILLARA)
             MACOSX_BUNDLE_BUNDLE_VERSION "1.0"
             MACOSX_BUNDLE_SHORT_VERSION_STRING "1.0"
             MACOSX_BUNDLE_COPYRIGHT "Based on code released under GPLv3 by EA"
-            MACOSX_BUNDLE_ICON_FILE "vanillara_icon.icns"
         )
+        if(VANILLARA_ICON)
+            set_target_properties(VanillaRA PROPERTIES MACOSX_BUNDLE_ICON_FILE "vanillara_icon.icns")
+        endif()
+        if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
+            set_target_properties(VanillaRA PROPERTIES
+                MACOSX_BUNDLE_INFO_PLIST "${CMAKE_SOURCE_DIR}/ios/Info.plist.in"
+                MACOSX_BUNDLE_GUI_IDENTIFIER "com.lin00700.redalert"
+                MACOSX_BUNDLE_BUNDLE_NAME "Red Alert"
+                XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER "com.lin00700.redalert"
+                XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED "NO"
+                XCODE_ATTRIBUTE_CODE_SIGNING_REQUIRED "NO"
+                XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY ""
+                XCODE_ATTRIBUTE_TARGETED_DEVICE_FAMILY "1,2"
+                XCODE_ATTRIBUTE_IPHONEOS_DEPLOYMENT_TARGET "15.0"
+                XCODE_ATTRIBUTE_ENABLE_BITCODE "NO"
+                XCODE_ATTRIBUTE_CLANG_ENABLE_OBJC_ARC "NO"
+            )
+            target_link_options(VanillaRA PRIVATE "-ObjC")
+        endif()
     endif()
 
     target_compile_definitions(VanillaRA PUBLIC $<$<CONFIG:Debug>:_DEBUG> ${VANILLA_DEFS})

@@ -18,6 +18,10 @@ private:
     void Handle_Controller_Axis_Event(const SDL_ControllerAxisEvent& motion);
     void Handle_Controller_Button_Event(const SDL_ControllerButtonEvent& button);
     void Process_Controller_Axis_Motion();
+#ifdef IOS_BUILD
+    void Handle_Touch_Event(const SDL_Event& event);
+    void Update_Touch_Gesture();
+#endif
 
     // used to convert user-friendly pointer speed values into more useable ones
     static constexpr float CONTROLLER_SPEED_MOD = 2000000.0f;

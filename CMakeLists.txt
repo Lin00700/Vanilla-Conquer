@@ -39,6 +39,20 @@ option(BUILD_WITH_ASAN "Build with address sanitizer" OFF)
 option(GERMAN "Use German instead of English." OFF)
 option(FRENCH "Use French instead of English." OFF)
 
+if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
+    # The sideload IPA is Red Alert only, with no networking entitlements.
+    set(BUILD_VANILLATD OFF CACHE BOOL "Tiberian Dawn is not part of the iOS app." FORCE)
+    set(BUILD_REMASTERTD OFF CACHE BOOL "" FORCE)
+    set(BUILD_REMASTERRA OFF CACHE BOOL "" FORCE)
+    set(BUILD_TESTS OFF CACHE BOOL "" FORCE)
+    set(BUILD_TOOLS OFF CACHE BOOL "" FORCE)
+    set(NETWORKING OFF CACHE BOOL "No multiplayer entitlements in the unsigned IPA." FORCE)
+    set(SDL2 ON CACHE BOOL "" FORCE)
+    set(OPENAL ON CACHE BOOL "" FORCE)
+    set(CMAKE_XCODE_ATTRIBUTE_CLANG_ENABLE_OBJC_ARC NO)
+    enable_language(OBJCXX)
+endif()
+
 if(WIN32 OR CMAKE_SYSTEM_NAME STREQUAL "Windows")
     option(WIN9X "Enable support for Windows 95/98/ME." OFF)
     option(DSOUND "Enable DirectSound audio. (deprecated)" OFF)
@@ -102,6 +116,9 @@ endif()
 
 set(VANILLA_DEFS "")
 set(VANILLA_LIBS "")
+if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
+    list(APPEND VANILLA_DEFS IOS_BUILD)
+endif()
 
 set(REMASTER_DEFS _USRDLL REMASTER_BUILD)
 set(REMASTER_LIBS "")
@@ -140,10 +157,28 @@ if(SDL1)
 endif()
 
 if(SDL2)
-    message("Find path is ${CMAKE_FIND_ROOT_PATH}")
-    find_package(SDL2 REQUIRED)
-    list(APPEND VANILLA_LIBS ${SDL2_LIBRARY})
-    include_directories(${SDL2_INCLUDE_DIR})
+    if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
+        include(FetchContent)
+        FetchContent_Declare(
+            SDL2
+            URL https://github.com/libsdl-org/SDL/releases/download/release-2.32.10/SDL2-2.32.10.tar.gz
+            URL_HASH SHA256=5f5993c530f084535c65a6879e9b26ad441169b3e25d789d83287040a9ca5165
+        )
+        set(SDL_SHARED OFF CACHE BOOL "" FORCE)
+        set(SDL_STATIC ON CACHE BOOL "" FORCE)
+        set(SDL_TEST OFF CACHE BOOL "" FORCE)
+        set(SDL_TESTS OFF CACHE BOOL "" FORCE)
+        FetchContent_MakeAvailable(SDL2)
+        if(TARGET SDL2::SDL2main)
+            list(APPEND VANILLA_LIBS SDL2::SDL2main)
+        endif()
+        list(APPEND VANILLA_LIBS SDL2::SDL2)
+    else()
+        message("Find path is ${CMAKE_FIND_ROOT_PATH}")
+        find_package(SDL2 REQUIRED)
+        list(APPEND VANILLA_LIBS ${SDL2_LIBRARY})
+        include_directories(${SDL2_INCLUDE_DIR})
+    endif()
 
     # winuser.h defines VK_ macros but it can be prevented
     if(WIN32)
@@ -153,6 +188,15 @@ if(SDL2)
 endif()
 
 if(OPENAL)
+    if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
+        execute_process(
+            COMMAND xcrun --sdk iphoneos --show-sdk-path
+            OUTPUT_VARIABLE VANILLA_IOS_SDK
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+        )
+        set(OPENAL_INCLUDE_DIR "${VANILLA_IOS_SDK}/System/Library/Frameworks/OpenAL.framework/Headers" CACHE PATH "" FORCE)
+        set(OPENAL_LIBRARY "${VANILLA_IOS_SDK}/System/Library/Frameworks/OpenAL.framework" CACHE FILEPATH "" FORCE)
+    endif()
     find_package(OpenAL REQUIRED)
     list(APPEND VANILLA_LIBS OpenAL::OpenAL)
     set(DSOUND OFF)

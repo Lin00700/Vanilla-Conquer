@@ -76,6 +76,7 @@
 
 #include "function.h"
 #include "factory.h"
+#include "common/ios_host.h"
 
 void* SidebarClass::SidebarShape = NULL;
 void* SidebarClass::SidebarMiddleShape = NULL;
@@ -210,7 +211,7 @@ SidebarClass::SidebarClass(NoInitClass const& x)
 void SidebarClass::One_Time(void)
 {
     /* Set RESFACTOR positions.  */
-    SidebarClass::Background.X = (int)((int)SIDE_X + 8) * RESFACTOR;
+    SidebarClass::Background.X = (int)((int)SIDE_X + 8) * RESFACTOR + IOS_Chrome_Shift();
     SidebarClass::Background.Y = (int)SIDE_Y * RESFACTOR;
     SidebarClass::Background.Width = (int)((int)SIDE_WIDTH - 1) * RESFACTOR - 1;
     SidebarClass::Background.Height = (int)((int)SIDE_HEIGHT - 1) * RESFACTOR;
@@ -222,7 +223,7 @@ void SidebarClass::One_Time(void)
     **	code so that as the sidebar buildable buttons scroll, they get properly
     **	clipped at the top and bottom edges.
     */
-    WindowList[WINDOW_SIDEBAR][WINDOWX] = ((SIDE_X + 8)) * RESFACTOR;
+    WindowList[WINDOW_SIDEBAR][WINDOWX] = ((SIDE_X + 8)) * RESFACTOR + IOS_Chrome_Shift();
     WindowList[WINDOW_SIDEBAR][WINDOWY] = (SIDE_Y + 1 + TOP_HEIGHT) * RESFACTOR;
     WindowList[WINDOW_SIDEBAR][WINDOWWIDTH] = (SIDE_WIDTH)*RESFACTOR;
     WindowList[WINDOW_SIDEBAR][WINDOWHEIGHT] = (StripClass::MAX_VISIBLE * StripClass::OBJECT_HEIGHT) * RESFACTOR;
@@ -237,9 +238,9 @@ void SidebarClass::One_Time(void)
     **	Set up the coordinates for the sidebar strips. These coordinates are for
     **	the upper left corner.
     */
-    Column[0].X = COLUMN_ONE_X * RESFACTOR;
+    Column[0].X = COLUMN_ONE_X * RESFACTOR + IOS_Chrome_Shift();
     Column[0].Y = COLUMN_ONE_Y * RESFACTOR;
-    Column[1].X = COLUMN_TWO_X * RESFACTOR;
+    Column[1].X = COLUMN_TWO_X * RESFACTOR + IOS_Chrome_Shift();
     Column[1].Y = COLUMN_TWO_Y * RESFACTOR;
     Column[0].One_Time(0);
     Column[1].One_Time(1);
@@ -302,7 +303,7 @@ void SidebarClass::Init_IO(void)
 
         Repair.IsSticky = true;
         Repair.ID = BUTTON_REPAIR;
-        Repair.X = (0x1f2 / 2) * RESFACTOR;
+        Repair.X = (0x1f2 / 2) * RESFACTOR + IOS_Chrome_Shift();
         Repair.Y = (0x96 / 2) * RESFACTOR;
         Repair.IsPressed = false;
         Repair.IsToggleType = true;
@@ -311,7 +312,7 @@ void SidebarClass::Init_IO(void)
 
         Upgrade.IsSticky = true;
         Upgrade.ID = BUTTON_UPGRADE;
-        Upgrade.X = (RESFACTOR == 1) ? 271 : 0x21f;
+        Upgrade.X = ((RESFACTOR == 1) ? 271 : 0x21f) + IOS_Chrome_Shift();
         Upgrade.Y = (0x96 / 2) * RESFACTOR;
         Upgrade.IsPressed = false;
         Upgrade.IsToggleType = true;
@@ -320,7 +321,7 @@ void SidebarClass::Init_IO(void)
 
         Zoom.IsSticky = true;
         Zoom.ID = BUTTON_ZOOM;
-        Zoom.X = (0x24c / 2) * RESFACTOR;
+        Zoom.X = (0x24c / 2) * RESFACTOR + IOS_Chrome_Shift();
         Zoom.Y = (0x96 / 2) * RESFACTOR;
         Zoom.IsPressed = false;
         Zoom.Set_Shape(MFCD::Retrieve("MAP.SHP"));
@@ -758,11 +759,19 @@ void SidebarClass::Draw_It(bool complete)
             /*
             ** The sidebar shape is too big in 640x400 so it needs to be drawn in three chunks.
             */
-            CC_Draw_Shape(SidebarShape, 0, SIDE_X * RESFACTOR, 8 * RESFACTOR, WINDOW_MAIN, SHAPE_WIN_REL);
-            CC_Draw_Shape(
-                SidebarMiddleShape, shape, SIDE_X * RESFACTOR, (8 + 80) * RESFACTOR, WINDOW_MAIN, SHAPE_WIN_REL);
-            CC_Draw_Shape(
-                SidebarBottomShape, shape, SIDE_X * RESFACTOR, (8 + 80 + 50) * RESFACTOR, WINDOW_MAIN, SHAPE_WIN_REL);
+            CC_Draw_Shape(SidebarShape, 0, SIDE_X * RESFACTOR + IOS_Chrome_Shift(), 8 * RESFACTOR, WINDOW_MAIN, SHAPE_WIN_REL);
+            CC_Draw_Shape(SidebarMiddleShape,
+                          shape,
+                          SIDE_X * RESFACTOR + IOS_Chrome_Shift(),
+                          (8 + 80) * RESFACTOR,
+                          WINDOW_MAIN,
+                          SHAPE_WIN_REL);
+            CC_Draw_Shape(SidebarBottomShape,
+                          shape,
+                          SIDE_X * RESFACTOR + IOS_Chrome_Shift(),
+                          (8 + 80 + 50) * RESFACTOR,
+                          WINDOW_MAIN,
+                          SHAPE_WIN_REL);
 
             Repair.Draw_Me(true);
             Upgrade.Draw_Me(true);

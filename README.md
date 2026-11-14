@@ -3,6 +3,48 @@ Vanilla Conquer is a fully portable version of the first generation C&C engine a
 
 The main focus of Vanilla Conquer is to keep the default out-of-box experience faithful to what the games were back when they were released and work as a drop-in replacement for the original executables while also providing bug fixes, compatiblity and quality of life improvements.
 
+## iPhone / 全能签
+
+这个仓库可以打出一个**不含任何游戏数据**的未签名 iOS 安装包，用全能签（或同类工具）签到自己的 iPhone 上玩红色警戒 1。引擎是 GPLv3 的 Vanilla Conquer，只编了 Red Alert（`vanillara`）。Bundle id 是 `com.lin00700.redalert`，最低系统 iOS 15，横屏。
+
+发行包在本仓库的 Release 标签 `ios-redalert`（文件名 `RedAlert-ios-unsigned.ipa`）。GitHub Actions 的 `ios` 工作流也会把同一个 IPA 当成构建产物上传。
+
+### 安装
+
+1. 下载 `RedAlert-ios-unsigned.ipa`。
+2. 用全能签导入并签名。不需要付费开发者账号的能力（没有推送、iCloud 之类的 entitlement）。
+3. 装到手机上之后先不要急着进游戏。
+
+### 游戏数据放哪
+
+应用里没有 MIX。打开 iPhone 的「文件」App，找到「红色警戒」（或「我的 iPhone」里这个 App），把你**自己合法取得**的原版文件拷进去。这个目录就是 App 的 Documents。
+
+必须有：
+
+- `REDALERT.MIX`
+- `MAIN.MIX`（可以放在这个目录的根上，也可以放在 `allied/` 或 `soviet/` 里）
+
+高清界面还需要 `HIRES.MIX`。不少安装目录里它已经打在 `REDALERT.MIX` 里面，那就不用再单独放一份。
+
+可选：`EXPAND.MIX`（隐秘行动）、`EXPAND2.MIX`（劫后余生），以及原版目录里其它 MIX。文件名要大写；如果拷过来是小写，应用会尝试改成大写。
+
+缺了 `REDALERT.MIX` 或 `MAIN.MIX` 时，屏幕上会停在中文说明，不会直接崩溃。放好文件后点「我已放入文件，继续」，或者切回游戏（应用会自己再找一次）。
+
+2008 年 EA 把红色警戒原版数据作为免费软件发布，说明见上游 README 里的 [EA 公告存档](https://web.archive.org/web/20080901183216/http://www.ea.com/redalert/news-detail.jsp?id=62)。官方试玩版也可以玩一部分内容。请用你合法获得的文件，不要从不明来源下载。本安装包不附带这些文件。
+
+### 触控
+
+- 点一下：选择（左键）
+- 按住约半秒，或两指点一下：命令（右键，移动 / 攻击）
+- 单指拖动：框选
+- 两指拖动：滚动地图（手指往哪边拖，地图就跟着往哪边走）
+
+游戏会把画面铺满整块屏幕（含刘海 / 灵动岛那一侧），状态栏隐藏，底部横条自动隐藏，边缘上滑需要滑两次才回主屏幕。侧边栏会让开刘海，地图仍画到屏幕边上，不会出现黑边，也不会把 640×400 拉变形。画面按手机的点尺寸来画（大约 800×400 这一级，比经典 640 更宽，所以横向能看见更多地图），再按设备的 2 倍或 3 倍整数放大到物理像素，像素保持正方形。
+
+### 已知限制
+
+没有联机。音频走系统 OpenAL，如果设备上初始化失败就没有声音，游戏仍会继续。鼠标边缘滚屏在触控上是关的，避免手指抬起后地图自己一直滚。部分原版对话框仍按 640 点宽排版，在更宽的屏幕上会偏左，但主菜单会居中。没有把泰伯利亚黎明打进这个 IPA。
+
 Current project goals are tracked as [GitHub issues with the goal label](https://github.com/Vanilla-Conquer/Vanilla-Conquer/issues?q=is%3Aissue+is%3Aopen+label%3Agoal).
 
 ## Chat with us

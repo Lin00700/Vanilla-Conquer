@@ -164,9 +164,23 @@ if(NETWORKING)
     )
 endif()
 
+if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
+    list(APPEND COMMON_SRC ${CMAKE_SOURCE_DIR}/ios/ios_host.mm)
+    set_source_files_properties(${CMAKE_SOURCE_DIR}/ios/ios_host.mm PROPERTIES COMPILE_FLAGS "-fno-objc-arc")
+    list(APPEND COMMON_LIBS
+        "-framework UIKit"
+        "-framework Foundation"
+        "-framework CoreGraphics"
+        "-framework QuartzCore"
+    )
+endif()
+
 file(GLOB_RECURSE COMMON_HEADERS "*.h")
 
 add_library(common STATIC ${COMMON_SRC} ${COMMON_HEADERS})
+if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
+    target_compile_definitions(common PUBLIC IOS_BUILD)
+endif()
 target_link_libraries(common PUBLIC ${COMMON_LIBS})
 target_include_directories(common PUBLIC .)
 target_compile_definitions(common PRIVATE FIXIT_FAST_LOAD $<$<CONFIG:Debug>:_DEBUG>)

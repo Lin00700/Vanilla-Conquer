@@ -46,6 +46,9 @@
 #include "debugstring.h"
 
 #include <SDL.h>
+#ifdef IOS_BUILD
+#include <cmath>
+#endif
 
 extern WWKeyboardClass* Keyboard;
 static SDL_Window* window;
@@ -167,6 +170,33 @@ static void Update_HWCursor_Settings()
         render_dst.y = 0;
     }
 
+#ifdef IOS_BUILD
+    /*
+    ** The game buffer is the panel's point size (same aspect as the drawable).
+    ** Scale it uniformly onto the pixel drawable with nearest filtering.
+    ** When points × nativeScale is the drawable (every current iPhone, 2x or
+    ** 3x), the destination is the full panel and ScaleX == ScaleY exactly.
+    ** A 1px remainder is snapped to the panel so it cannot become a bar.
+    */
+    {
+        const float uniform = hwcursor.GameH > 0 ? (float)win_h / (float)hwcursor.GameH : 1.0f;
+        int dest_w = (int)std::lround((float)hwcursor.GameW * uniform);
+        int dest_h = (int)std::lround((float)hwcursor.GameH * uniform);
+        const int width_error = dest_w > win_w ? dest_w - win_w : win_w - dest_w;
+        const int height_error = dest_h > win_h ? dest_h - win_h : win_h - dest_h;
+        if (width_error <= 2 && height_error <= 2) {
+            dest_w = win_w;
+            dest_h = win_h;
+        }
+        render_dst.w = dest_w;
+        render_dst.h = dest_h;
+        render_dst.x = (win_w - dest_w) / 2;
+        render_dst.y = (win_h - dest_h) / 2;
+        hwcursor.ScaleX = hwcursor.GameW > 0 ? (float)render_dst.w / (float)hwcursor.GameW : 1.0f;
+        hwcursor.ScaleY = hwcursor.GameH > 0 ? (float)render_dst.h / (float)hwcursor.GameH : 1.0f;
+    }
+#endif
+
     /*
     ** Ensure cursor clip is in the desired state.
     */
@@ -216,12 +246,24 @@ SurfaceMonitorClass& AllSurfaces = AllSurfacesDummy; // List of all direct draw 
  *=============================================================================================*/
 bool Set_Video_Mode(int w, int h, int bits_per_pixel)
 {
+#ifdef IOS_BUILD
+    // Touch is translated by the client. SDL must not also synthesize mouse events.
+    SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "0");
+    SDL_SetHint(SDL_HINT_MOUSE_TOUCH_EVENTS, "0");
+    // Hint value 2 defers the home-indicator swipe. The view-controller category
+    // also auto-hides the indicator; SDL's hint only selects one of the two.
+    SDL_SetHint(SDL_HINT_IOS_HIDE_HOME_INDICATOR, "2");
+    SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
+#endif
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
     SDL_ShowCursor(SDL_DISABLE);
 
     int win_w = w;
     int win_h = h;
     int win_flags = 0;
+#ifdef IOS_BUILD
+    win_flags |= SDL_WINDOW_ALLOW_HIGHDPI;
+#endif
     Uint32 requested_pixel_format = SettingsPixelFormat();
 
     if (!Settings.Video.Windowed) {
@@ -244,6 +286,14 @@ bool Set_Video_Mode(int w, int h, int bits_per_pixel)
         Settings.Video.WindowWidth = win_w;
         Settings.Video.WindowHeight = win_h;
     }
+
+#ifdef IOS_BUILD
+    if (win_w <= 0 || win_h <= 0) {
+        win_w = w;
+        win_h = h;
+    }
+    win_flags |= SDL_WINDOW_FULLSCREEN_DESKTOP | SDL_WINDOW_BORDERLESS;
+#endif
 
     window =
         SDL_CreateWindow("Vanilla Conquer", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, win_w, win_h, win_flags);
@@ -445,8 +495,71 @@ void Move_Video_Mouse(float xrel, float yrel)
     }
 }
 
+#ifdef IOS_BUILD
+static bool ios_mouse_absolute = false;
+
+static void Clamp_Game_Point(int& x, int& y)
+{
+    if (x < 0) {
+        x = 0;
+    } else if (hwcursor.GameW > 0 && x >= hwcursor.GameW) {
+        x = hwcursor.GameW - 1;
+    }
+    if (y < 0) {
+        y = 0;
+    } else if (hwcursor.GameH > 0 && y >= hwcursor.GameH) {
+        y = hwcursor.GameH - 1;
+    }
+}
+
+void Video_Window_Point_To_Game(float window_x, float window_y, int& game_x, int& game_y)
+{
+    int window_w = 1;
+    int window_h = 1;
+    if (window != nullptr) {
+        SDL_GetWindowSize(window, &window_w, &window_h);
+    }
+    if (window_w < 1) {
+        window_w = 1;
+    }
+    if (window_h < 1) {
+        window_h = 1;
+    }
+    game_x = (int)std::lround(window_x * (float)hwcursor.GameW / (float)window_w);
+    game_y = (int)std::lround(window_y * (float)hwcursor.GameH / (float)window_h);
+    Clamp_Game_Point(game_x, game_y);
+    hwcursor.X = (float)game_x;
+    hwcursor.Y = (float)game_y;
+    ios_mouse_absolute = true;
+}
+
+void Video_Norm_To_Game(float nx, float ny, int& game_x, int& game_y)
+{
+    // A normalized touch covers the whole window, and the whole window shows
+    // the whole framebuffer, so this is the game pixel directly.
+    game_x = (int)std::lround(nx * (float)hwcursor.GameW);
+    game_y = (int)std::lround(ny * (float)hwcursor.GameH);
+    Clamp_Game_Point(game_x, game_y);
+    hwcursor.X = (float)game_x;
+    hwcursor.Y = (float)game_y;
+    ios_mouse_absolute = true;
+}
+#endif
+
 void Get_Video_Mouse(int& x, int& y)
 {
+#ifdef IOS_BUILD
+    if (ios_mouse_absolute) {
+        x = (int)hwcursor.X;
+        y = (int)hwcursor.Y;
+        return;
+    }
+    int mx = 0;
+    int my = 0;
+    SDL_GetMouseState(&mx, &my);
+    Video_Window_Point_To_Game((float)mx, (float)my, x, y);
+    return;
+#endif
     if (Keyboard->Is_Gamepad_Active() || (Settings.Mouse.RawInput && (hwcursor.Clip || !Settings.Video.Windowed))) {
         x = hwcursor.X;
         y = hwcursor.Y;

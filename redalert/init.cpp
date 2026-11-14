@@ -57,6 +57,9 @@
  * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
 #include "function.h"
+#ifdef IOS_BUILD
+#include "common/ios_host.h"
+#endif
 #include "language.h"
 #include "msgbox.h"
 #include "loaddlg.h"
@@ -1203,6 +1206,12 @@ bool Select_Game(bool fade)
  *=============================================================================================*/
 static void Play_Intro(bool sequenced)
 {
+#ifdef IOS_BUILD
+    // The 1996 CD often has no intro VQA next to the two MIX files. Skipping
+    // the movie avoids a black-screen exit before the menu.
+    (void)sequenced;
+    return;
+#endif
     static VQType _counter = VQ_FIRST;
 
     Keyboard->Clear();
@@ -2195,6 +2204,12 @@ static void Init_Fonts(void)
     FontLEDPtr = MFCD::Retrieve("LED.FNT");
     VCRFontPtr = MFCD::Retrieve("VCR.FNT");
     TypeFontPtr = MFCD::Retrieve("8POINT.FNT"); //("TYPE.FNT"); //VG 10/17/96
+#ifdef IOS_BUILD
+    if (Font8Ptr == NULL) {
+        IOS_Show_Fatal("没有读到游戏字体。请确认 REDALERT.MIX 是红色警戒原版的那个文件。高清界面可以另外放入 "
+                       "HIRES.MIX；没有它也会用原分辨率素材继续。");
+    }
+#endif
 }
 
 /***********************************************************************************************
@@ -2216,6 +2231,14 @@ static void Init_Fonts(void)
  *=============================================================================================*/
 static void Init_CDROM_Access(void)
 {
+#ifdef IOS_BUILD
+    // Documents already holds MAIN.MIX. Do not ask for a CD or abort.
+    if (CCFileClass("MAIN.MIX").Is_Available()) {
+        RequiredCD = -2;
+        return;
+    }
+    IOS_Show_Fatal("找不到 MAIN.MIX。请把它和 REDALERT.MIX 放在「文件」App 里本应用的目录中，不要只放在别的文件夹。");
+#endif
     VisiblePage.Clear();
     HidPage.Clear();
 
@@ -2307,17 +2330,45 @@ static void Init_Bootstrap_Mixfiles(void)
     new MFCD("LOCAL.MIX", &FastKey); // Cached.
     bool ok = MFCD::Cache("LOCAL.MIX");
     assert(ok);
+#ifdef IOS_BUILD
+    if (!ok) {
+        IOS_Show_Fatal("REDALERT.MIX 里没有启动用的 LOCAL.MIX。请换一份红色警戒的 REDALERT.MIX（光盘 INSTALL "
+                       "目录里的那个），并和 MAIN.MIX 放在一起。");
+    }
+    // The 1996 Allied CD has no loose HIRES.MIX. High-res art is optional;
+    // without it the original-resolution assets still fill the phone.
+    if (RESFACTOR != 1 && !CCFileClass("HIRES.MIX").Is_Available()) {
+        RESFACTOR = 1;
+    }
+#endif
 
     if (RESFACTOR != 1 && !is_remaster) {
+#ifdef IOS_BUILD
+        if (CCFileClass("HIRES.MIX").Is_Available()) {
+            new MFCD("HIRES.MIX", &FastKey);
+            ok = MFCD::Cache("HIRES.MIX");
+        }
+        if (CCFileClass("NCHIRES.MIX").Is_Available()) {
+            new MFCD("NCHIRES.MIX", &FastKey); //Non-cached hires stuff incl VQ palettes
+        }
+#else
         new MFCD("HIRES.MIX", &FastKey);
         ok = MFCD::Cache("HIRES.MIX");
         assert(ok);
 
         new MFCD("NCHIRES.MIX", &FastKey); //Non-cached hires stuff incl VQ palettes
+#endif
     } else {
+#ifdef IOS_BUILD
+        if (CCFileClass("LORES.MIX").Is_Available()) {
+            new MFCD("LORES.MIX", &FastKey);
+            ok = MFCD::Cache("LORES.MIX");
+        }
+#else
         new MFCD("LORES.MIX", &FastKey);
         ok = MFCD::Cache("LORES.MIX");
         assert(ok);
+#endif
     }
 
     RequiredCD = temp;
@@ -2409,9 +2460,14 @@ static void Bootstrap(void)
     ** the screen.
     */
 #ifndef REMASTER_BUILD
+#ifdef IOS_BUILD
+    // A focus-lost event here would otherwise spin forever on a black screen.
+    GameInFocus = true;
+#else
     do {
         Keyboard->Check();
     } while (!GameInFocus);
+#endif
     AllSurfaces.SurfacesRestored = false;
 
     /*

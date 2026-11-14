@@ -407,6 +407,10 @@ extern "C"
 #ifdef _WIN32
             MessageBoxA(MainWindow, TEXT_VIDEO_ERROR, TEXT_SHORT_TITLE, MB_ICONEXCLAMATION | MB_OK);
 #endif
+#ifdef IOS_BUILD
+            IOS_Show_Fatal(
+                "无法建立画面，所以停在这个说明上，而不是直接回到主屏幕。请把红色警戒从后台完全划掉后再打开。");
+#endif
             // if (Palette) delete Palette;
             return (EXIT_FAILURE);
         }
@@ -430,6 +434,9 @@ extern "C"
             WWDebugString("\n");
 #ifdef _WIN32
             MessageBoxA(MainWindow, TEXT_DDRAW_ERROR, TEXT_SHORT_TITLE, MB_ICONEXCLAMATION | MB_OK);
+#endif
+#ifdef IOS_BUILD
+            IOS_Show_Fatal("画面缓冲没有建起来。请完全退出红色警戒后再打开一次。");
 #endif
             return (EXIT_FAILURE);
         }
@@ -672,7 +679,11 @@ void Prog_End(const char* why, bool fatal)
         GlyphX_Debug_Print(why);
     }
     if (fatal) {
+#ifdef IOS_BUILD
+        IOS_Show_Fatal(why != nullptr ? why : "启动过程中断。");
+#else
         *((int*)0) = 0;
+#endif
     }
 
     if (Session.Type == GAME_GLYPHX_MULTIPLAYER) {

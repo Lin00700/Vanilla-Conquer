@@ -28,6 +28,10 @@ int IOS_Safe_Right_Pixels(void);
 // framebuffer is not letterboxed by it.
 int IOS_Safe_Bottom_Pixels(void);
 
+// Full-screen Chinese message. Does not return: a silent exit was hiding
+// startup failures after the MIX files were found.
+void IOS_Show_Fatal(const char* message);
+
 #ifdef __cplusplus
 }
 #endif

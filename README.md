@@ -30,6 +30,8 @@ The main focus of Vanilla Conquer is to keep the default out-of-box experience f
 
 缺了 `REDALERT.MIX` 或 `MAIN.MIX` 时，屏幕上会停在中文说明，不会直接崩溃。放好文件后点「我已放入文件，继续」，或者切回游戏（应用会自己再找一次）。
 
+1996 年原版光盘通常没有单独的 `HIRES.MIX`（高清图是后来的 Windows 安装程序另放的）。只有 `REDALERT.MIX` 和 `MAIN.MIX` 时，游戏改用光盘自带的原分辨率素材，仍然铺满屏幕，不会因为缺少高清图而闪退。如果连字体都读不出来，会停在中文说明上，而不是回到主屏幕。
+
 2008 年 EA 把红色警戒原版数据作为免费软件发布，说明见上游 README 里的 [EA 公告存档](https://web.archive.org/web/20080901183216/http://www.ea.com/redalert/news-detail.jsp?id=62)。官方试玩版也可以玩一部分内容。请用你合法获得的文件，不要从不明来源下载。本安装包不附带这些文件。
 
 ### 触控

@@ -76,7 +76,7 @@ static BOOL Has_Game_Data()
     return Find_Mix(root, @"REDALERT.MIX") != nil && Find_Mix(root, @"MAIN.MIX") != nil;
 }
 
-static void Capture_Metrics(UIWindow* window)
+static void Capture_Screen_Size()
 {
     CGFloat native_scale = UIScreen.mainScreen.nativeScale;
     CGRect native = UIScreen.mainScreen.nativeBounds;
@@ -94,8 +94,10 @@ static void Capture_Metrics(UIWindow* window)
     if (g_height < 200) {
         g_height = pixels_h;
     }
+}
 
-    UIEdgeInsets insets = window.safeAreaInsets;
+static void Capture_Safe_Area(UIEdgeInsets insets)
+{
     // Portrait reports the island as the top inset; landscape reports it on
     // the left or right. The larger of those is the inset the sidebar needs
     // in either rotation.
@@ -103,8 +105,8 @@ static void Capture_Metrics(UIWindow* window)
     side = MAX(side, insets.top);
     g_safe_right = (int)std::llround(side);
     g_safe_bottom = (int)std::llround(insets.bottom);
-    // A landscape-only app can report empty insets before the scene rotates.
-    // Wide phones (19.5:9 class) have an island; classic 16:9 phones do not.
+    // Wide phones (19.5:9 class) have an island even if UIKit has not
+    // published insets yet. Classic 16:9 phones do not.
     if (g_height > 0 && (float)g_width / (float)g_height > 2.0f) {
         if (g_safe_right < 44) {
             g_safe_right = 47;
@@ -113,10 +115,10 @@ static void Capture_Metrics(UIWindow* window)
             g_safe_bottom = 21;
         }
     }
-    if (g_safe_right > g_width / 5) {
+    if (g_width > 0 && g_safe_right > g_width / 5) {
         g_safe_right = g_width / 5;
     }
-    if (g_safe_bottom > g_height / 5) {
+    if (g_height > 0 && g_safe_bottom > g_height / 5) {
         g_safe_bottom = g_height / 5;
     }
     g_metrics = true;
@@ -305,21 +307,62 @@ const char* IOS_Documents_Directory(void)
 void IOS_Choose_Resolution(int* width, int* height)
 {
     if (!g_metrics) {
-        // Resolution can be derived from the screen even before the data UI runs.
-        RAChromeController* chrome = [[RAChromeController alloc] init];
-        UIWindow* probe = Make_Window(chrome);
-        [chrome release];
-        [probe makeKeyAndVisible];
-        CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.05, false);
-        Capture_Metrics(probe);
-        probe.hidden = YES;
-        [probe release];
+        // UIScreen only. A UIWindow created here becomes the key window and
+        // SDL_CreateWindow then fails, which used to exit with a black screen.
+        Capture_Screen_Size();
+        Capture_Safe_Area(UIEdgeInsetsZero);
     }
     if (width != nullptr) {
         *width = g_width;
     }
     if (height != nullptr) {
         *height = g_height;
+    }
+}
+
+void IOS_Show_Fatal(const char* message)
+{
+    static bool showing = false;
+    if (showing) {
+        while (true) {
+            CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.5, false);
+        }
+    }
+    showing = true;
+
+    @autoreleasepool {
+        NSString* detail = message != nullptr ? [NSString stringWithUTF8String:message] : @"";
+        if (detail == nil) {
+            detail = @"";
+        }
+        NSString* text = [NSString
+            stringWithFormat:@"红色警戒没能进入游戏，所以停在这个画面，避免直接闪退。\n\n%@", detail];
+
+        RAChromeController* controller = [[RAChromeController alloc] init];
+        UIWindow* window = Make_Window(controller);
+        [controller release];
+        window.windowLevel = UIWindowLevelAlert + 1;
+        [window makeKeyAndVisible];
+
+        UILabel* label = [[[UILabel alloc] init] autorelease];
+        label.translatesAutoresizingMaskIntoConstraints = NO;
+        label.text = text;
+        label.textColor = [UIColor colorWithWhite:0.95 alpha:1.0];
+        label.font = [UIFont systemFontOfSize:18 weight:UIFontWeightMedium];
+        label.numberOfLines = 0;
+        label.backgroundColor = [UIColor colorWithRed:0.05 green:0.04 blue:0.03 alpha:1.0];
+        [window.rootViewController.view addSubview:label];
+        UILayoutGuide* guide = window.rootViewController.view.safeAreaLayoutGuide;
+        [NSLayoutConstraint activateConstraints:@[
+            [label.leadingAnchor constraintEqualToAnchor:guide.leadingAnchor constant:24],
+            [label.trailingAnchor constraintEqualToAnchor:guide.trailingAnchor constant:-24],
+            [label.topAnchor constraintEqualToAnchor:guide.topAnchor constant:24],
+            [label.bottomAnchor constraintLessThanOrEqualToAnchor:guide.bottomAnchor constant:-24],
+        ]];
+
+        while (true) {
+            CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.5, false);
+        }
     }
 }
 
@@ -348,7 +391,8 @@ void IOS_Wait_For_Game_Data(void)
         UIWindow* window = Make_Window(controller);
         [window makeKeyAndVisible];
         CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.05, false);
-        Capture_Metrics(window);
+        Capture_Screen_Size();
+        Capture_Safe_Area(window.safeAreaInsets);
 
         while (!Has_Game_Data() && !controller.acknowledged) {
             CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.2, false);
@@ -360,6 +404,7 @@ void IOS_Wait_For_Game_Data(void)
         }
 
         window.hidden = YES;
+        window.rootViewController = nil;
         [window release];
         [controller release];
     }

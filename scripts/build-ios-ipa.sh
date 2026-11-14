@@ -29,9 +29,10 @@ cmake --build "$build_dir" --config Release --target VanillaRA -- \
     CODE_SIGNING_REQUIRED=NO \
     CODE_SIGN_IDENTITY=""
 
-app="$(find "$build_dir" -type d -path '*Release-iphoneos/*.app' -print -quit)"
+# Xcode places the device bundle in Release/ or Release-iphoneos/.
+app="$(find "$build_dir" -type d -name 'vanillara.app' ! -path '*iphonesimulator*' -print -quit)"
 if [[ -z "$app" ]]; then
-    echo "No Release-iphoneos .app was produced" >&2
+    echo "No vanillara.app was produced" >&2
     find "$build_dir" -name '*.app' -print >&2 || true
     exit 1
 fi

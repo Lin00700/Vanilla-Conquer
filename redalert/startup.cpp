@@ -311,6 +311,14 @@ extern "C"
     */
     Paths.Init("vanillara", CONFIG_FILE_NAME, "REDALERT.MIX", args.ArgV[0]);
     CDFileClass::Refresh_Search_Drives();
+#ifdef IOS_BUILD
+    // Documents is already on the search path. -2 means "data is local",
+    // which is the only arrangement an iPhone can have.
+    RequiredCD = -2;
+    if (CurrentCD < 0) {
+        CurrentCD = 0;
+    }
+#endif
 
     if (Parse_Command_Line(args.ArgC, args.ArgV)) {
 
@@ -508,9 +516,16 @@ extern "C"
         **	Check for forced intro movie run disabling. If the conquer
         **	configuration file says "no", then don't run the intro.
         */
+#ifdef IOS_BUILD
+        // The default PlayIntro=true would mark a first launch as an install,
+        // write REDALERT.INI before the mixes are mounted, and skip the menu.
+        // There is no intro movie next to the two MIX files.
+        Special.IsFromInstall = false;
+#else
         if (!Special.IsFromInstall) {
             Special.IsFromInstall = ini.Get_Bool("Intro", "PlayIntro", true);
         }
+#endif
         SlowPalette = ini.Get_Bool("Options", "SlowPalette", false);
 
         /*

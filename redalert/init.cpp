@@ -2232,12 +2232,18 @@ static void Init_Fonts(void)
 static void Init_CDROM_Access(void)
 {
 #ifdef IOS_BUILD
-    // Documents already holds MAIN.MIX. Do not ask for a CD or abort.
-    if (CCFileClass("MAIN.MIX").Is_Available()) {
-        RequiredCD = -2;
-        return;
+    // Documents is the disc. A failed probe must not fall through into the
+    // desktop CD dialog, and it must not be reported as a missing volume
+    // when the two MIX files are already in the app folder.
+    RequiredCD = -2;
+    if (CurrentCD < 0) {
+        CurrentCD = 0;
     }
-    IOS_Show_Fatal("找不到 MAIN.MIX。请把它和 REDALERT.MIX 放在「文件」App 里本应用的目录中，不要只放在别的文件夹。");
+    if (!CCFileClass("MAIN.MIX").Is_Available()) {
+        IOS_Show_Fatal(
+            "打不开 MAIN.MIX。它和 REDALERT.MIX 需要放在「文件」App 里本应用的目录中，文件名用大写。手机上没有光驱。");
+    }
+    return;
 #endif
     VisiblePage.Clear();
     HidPage.Clear();

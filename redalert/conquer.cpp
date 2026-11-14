@@ -3708,6 +3708,37 @@ static bool Change_Local_Dir(int cd)
     static const char* _vol_labels[CD_COUNT] = {"allied", "soviet", "counterstrike", "aftermath", "."};
     std::string paths[3] = {Paths.User_Path(), Paths.Data_Path(), Paths.Program_Path()};
 
+#ifdef IOS_BUILD
+    /*
+    ** There is no CD drive. REDALERT.MIX and MAIN.MIX live in Documents
+    ** itself, not in allied/ or soviet/. A scan that only accepts those
+    ** folders caches "no disc" and every later open dies with
+    ** "CD not found".
+    */
+    if ((_detected & (1u << CD_DATADIR)) == 0) {
+        for (int j = 0; j < 3; ++j) {
+            if (paths[j].empty()) {
+                continue;
+            }
+            std::string mix = Paths.Concatenate_Paths(paths[j].c_str(), "MAIN.MIX");
+            if (RawFileClass(mix.c_str()).Is_Available()) {
+                _detected |= 1u << CD_DATADIR;
+                break;
+            }
+        }
+    }
+    if ((_detected & (1u << CD_DATADIR)) != 0) {
+        if (cd < 0 || cd >= CD_COUNT || (_detected & (1u << cd)) == 0) {
+            cd = CD_DATADIR;
+        }
+        // Allied disc is the one this install ships. CurrentCD == 0 selects
+        // the Allied first mission; -1 was being treated as the Soviet disc.
+        CurrentCD = (cd == CD_DATADIR) ? 0 : cd;
+        LastCD = cd;
+        return true;
+    }
+#endif
+
     // Detect which if any of the discs have had their data copied to an appropriate local folder.
     if (!_initialised) {
         for (int i = 0; i < CD_COUNT; ++i) {
@@ -3806,6 +3837,17 @@ static bool Change_Local_Dir(int cd)
 
 bool Force_CD_Available(int cd_desired) //	ajw
 {
+#ifdef IOS_BUILD
+    /*
+    ** Documents is the disc. Do not ask the player to insert a CD, and do
+    ** not turn a missing optional file into "CD not found".
+    */
+    (void)cd_desired;
+    if (CurrentCD < 0) {
+        CurrentCD = 0;
+    }
+    return true;
+#endif
     /*
     ** If the required CD is set to -2 then it means that the file is present
     ** on the local hard drive and we shouldn't have to worry about it.

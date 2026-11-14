@@ -629,10 +629,17 @@ int Main_Menu(unsigned int)
     /*
     **	Initialize
     */
+#ifdef IOS_BUILD
+    // The menu used to force RequiredCD back to "any CD" and then a missing
+    // file aborted with "CD not found". Documents stays the local disc.
+    RequiredCD = -2;
+    Force_CD_Available(RequiredCD);
+#else
     if (RequiredCD != -2) {
         RequiredCD = -1;
         Force_CD_Available(RequiredCD);
     }
+#endif
     Set_Logic_Page(SeenBuff);
     Keyboard->Clear();
     starttime = TickCount;

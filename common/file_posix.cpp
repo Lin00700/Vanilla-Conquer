@@ -69,6 +69,39 @@ unsigned int Find_File_Data_Posix::GetTime() const
     return buf.st_mtime;
 }
 
+static int Ascii_Fold(int c)
+{
+    if (c >= 'A' && c <= 'Z') {
+        return c - 'A' + 'a';
+    }
+    return c;
+}
+
+// fnmatch's FNM_CASEFOLD flag is not honored by every libc that defines it.
+// MIX names are literals (MAIN.MIX), so a direct fold covers that case.
+static bool Name_Match(const char* pattern, const char* name)
+{
+    if (pattern == nullptr || name == nullptr) {
+        return false;
+    }
+    if (fnmatch(pattern, name, FNM_PATHNAME | FNM_CASEFOLD) == 0) {
+        return true;
+    }
+    for (const char* p = pattern; *p != '\0'; ++p) {
+        if (*p == '*' || *p == '?' || *p == '[') {
+            return false;
+        }
+    }
+    while (*pattern != '\0' && *name != '\0') {
+        if (Ascii_Fold(*pattern) != Ascii_Fold(*name)) {
+            return false;
+        }
+        ++pattern;
+        ++name;
+    }
+    return *pattern == '\0' && *name == '\0';
+}
+
 bool Find_File_Data_Posix::FindNextWithFilter()
 {
     while (true) {
@@ -76,7 +109,7 @@ bool Find_File_Data_Posix::FindNextWithFilter()
         if (DirEntry == nullptr) {
             return false;
         }
-        if (fnmatch(FileFilter, DirEntry->d_name, FNM_PATHNAME | FNM_CASEFOLD) == 0) {
+        if (Name_Match(FileFilter, DirEntry->d_name)) {
             strcpy(FullName, DirName);
             strcat(FullName, DirEntry->d_name);
             break;
